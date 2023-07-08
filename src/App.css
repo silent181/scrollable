@@ -1,0 +1,33 @@
+.flexbox {
+  display: flex;
+
+  width: 500px;
+  height: 333px;
+
+  background-color: rgb(58, 70, 138);
+}
+.box {
+  width: 200px;
+  height: 200px;
+}
+
+.box1 {
+  background-color: red;
+}
+
+.box2 {
+  background-color: yellow;
+}
+
+.box3 {
+  background-color: green;
+  align-self: center;
+}
+
+.box4 {
+  background-color: purple;
+}
+
+.box5 {
+  background-color: peru;
+}
