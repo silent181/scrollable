@@ -2,18 +2,6 @@
   overflow: hidden !important;
 }
 
-.__flex_container_x__ {
-  flex-direction: row;
-}
-
-.__flex_container_y__ {
-  flex-direction: column;
-}
-
-.__flex_item__ {
-  flex-shrink: 0 !important;
-}
-
 .scrollable-wrapper {
   position: relative;
   display: inline-block;

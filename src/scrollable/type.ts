@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode } from 'react';
+import { CSSProperties, MutableRefObject, ReactNode } from 'react';
 
 export type Direction = 'x' | 'y';
 
@@ -12,7 +12,7 @@ export type ScrollCallback = (info: ScrollInfo) => void;
 export interface ScrollableProps {
   children: ReactNode;
   direction: Direction;
-  uniqueKey: string | number;
+  uniqueKey: string;
   onScroll?: (scrollInfo: ScrollInfo) => void;
   scrollbar?: {
     size?: number;
@@ -34,3 +34,15 @@ export type BaseInfo = {
   thumbScrollRatio: number;
   scrollbarProp: 'width' | 'height';
 };
+
+export interface ControllerOptions {
+  flexContainer: HTMLElement;
+  scrollbar: HTMLElement;
+  direction: Direction;
+  onScrollRef?: MutableRefObject<ScrollCallback | undefined>;
+  transitionTime?: number;
+}
+
+export interface ScrollableInstance {
+  scroll: (length: number) => void;
+}
