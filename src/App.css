@@ -26,10 +26,13 @@
 
 .box1 {
   background-color: red;
+  margin: 8px;
 }
 
 .box2 {
   background-color: yellow;
+  margin-left: 30px;
+  margin-top: 20px;
 }
 
 .box3 {
@@ -39,8 +42,11 @@
 
 .box4 {
   background-color: purple;
+  margin: 22px 11px 42px;
 }
 
 .box5 {
   background-color: peru;
+  margin-bottom: 20px;
+  margin-right: 10px;
 }

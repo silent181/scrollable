@@ -12,7 +12,7 @@ export type ScrollCallback = (info: ScrollInfo) => void;
 export interface ScrollableProps {
   children: ReactNode;
   direction: Direction;
-  uniqueKey: string;
+  id: string;
   onScroll?: (scrollInfo: ScrollInfo) => void;
   scrollbar?: {
     size?: number;

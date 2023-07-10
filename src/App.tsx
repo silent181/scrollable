@@ -30,9 +30,9 @@ const App = () => {
     >
       <Scrollable
         ref={ins1}
-        uniqueKey={'instance1'}
+        id={'instance1'}
         direction={'y'}
-        scrollbar={{ imgSrc, size: 10 }}
+        scrollbar={{ size: 10 }}
         onScroll={(v) => {
           console.log(v, 'scroll');
         }}
@@ -57,7 +57,7 @@ const App = () => {
       </div>
       {!dispose && (
         <>
-          <Scrollable uniqueKey={'instance2'} direction={'x'} scrollbar={{ size: 20 }}>
+          <Scrollable id={'instance2'} direction={'x'} scrollbar={{ size: 20, imgSrc }}>
             <div className="flexbox2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
@@ -66,6 +66,13 @@ const App = () => {
                   onClick={() => {
                     console.log('clk');
                   }}
+                  style={
+                    i === 3
+                      ? {
+                          marginLeft: 100,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>

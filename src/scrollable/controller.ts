@@ -2,6 +2,14 @@ import { MutableRefObject } from 'react';
 import { BaseInfo, Direction, ScrollCallback, ScrollInfo, ControllerOptions } from './type';
 import { scrollManager } from './manager';
 
+const raf = (cb: () => void) => {
+  if (typeof window.requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => cb());
+  } else {
+    cb();
+  }
+};
+
 export class Controller {
   flexContainer: HTMLElement;
   scrollbar: HTMLElement;
@@ -73,7 +81,7 @@ export class Controller {
     }
 
     const nextScrollValue = this.scrollValue - e.deltaY;
-    this.doScroll(nextScrollValue);
+    this.doScroll(nextScrollValue, true);
   };
 
   public scroll = (relativeValue: number) => {
@@ -97,9 +105,39 @@ export class Controller {
   };
 
   private getBaseInfo = () => {
+    const getItemLength = (item: HTMLElement) => {
+      const { width, height } = item.getBoundingClientRect();
+
+      const calcMargin = (item: HTMLElement) => {
+        const getValueByPx = (px: string) => Number(px.slice(0, -2));
+
+        const style = window.getComputedStyle(item);
+
+        const top = (style.marginTop || style['margin-top' as keyof CSSStyleDeclaration]) as string;
+        const right = (style.marginRight || style['margin-right' as keyof CSSStyleDeclaration]) as string;
+        const bottom = (style.marginBottom || style['margin-bottom' as keyof CSSStyleDeclaration]) as string;
+        const left = (style.marginLeft || style['margin-left' as keyof CSSStyleDeclaration]) as string;
+
+        return {
+          top: getValueByPx(top),
+          right: getValueByPx(right),
+          bottom: getValueByPx(bottom),
+          left: getValueByPx(left),
+        };
+      };
+
+      const margins = calcMargin(item);
+
+      if (this.direction === 'x') {
+        return width + margins.left + margins.right;
+      }
+
+      return height + margins.top + margins.bottom;
+    };
+
     const flexItems = Array.from(this.flexContainer.children) as HTMLElement[];
+    const totalLength = flexItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
     const scrollbarProp = this.direction === 'x' ? 'width' : 'height';
-    const totalLength = flexItems.reduce((sum, cur) => sum + cur.getBoundingClientRect()[scrollbarProp], 0);
     const containerLength = this.flexContainer.getBoundingClientRect()[scrollbarProp];
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
@@ -182,19 +220,23 @@ export class Controller {
 
   private moveItems = (scrollValue: number) => {
     this.info.flexItems.forEach((el) => {
-      el.style.transform = `translate${this.direction.toUpperCase()}(${scrollValue}px)`;
+      raf(() => {
+        el.style.transform = `translate${this.direction.toUpperCase()}(${scrollValue}px)`;
+      });
     });
   };
 
   private moveScrollbar = (scrollValue: number) => {
     const ratio = this.info.thumbScrollRatio;
 
-    this.scrollbar.style.transform = `translate${this.direction.toUpperCase()}(${-scrollValue * ratio}px)`;
+    raf(() => {
+      this.scrollbar.style.transform = `translate${this.direction.toUpperCase()}(${-scrollValue * ratio}px)`;
+    });
   };
 
-  private doScroll = (value: number, force = false) => {
+  private doScroll = (value: number, once = false) => {
     if (value > 0 || Math.abs(value) > this.info.scrollLength) {
-      if (force) {
+      if (once) {
         value = value > 0 ? 0 : -this.info.scrollLength;
       } else {
         return;

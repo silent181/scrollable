@@ -11,7 +11,7 @@ export class ScrollManager {
     this.map = new Map();
   }
 
-  getInstance() {
+  static getInstance() {
     return window.__scrollManager as ScrollManager;
   }
 

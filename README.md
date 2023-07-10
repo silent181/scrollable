@@ -4,21 +4,15 @@ make flex element scrollable with custom scrollbar
 
 ## usage
 
-wrap your flex element with `<Scrollable>` component
+Wrap your flex element with `<Scrollable>` component
 
+Flex element **_must_** have these preset properties:
 
+1、`flex-wrap: no-wrap` , this property defaults to be true,
 
-flex element ***must*** has these preset properties:
+2、`flex-direction: column` when you want to scroll vertically
 
-1、`flex-wrap: no-wrap` , this  property defaults to be true, 
-
-2、`flex-direction: column` when you want to scroll vertially
-
-
-
-flex items ***must*** has `flex-shrink: 0` property
-
-
+Each flex items **_must_** have `flex-shrink: 0` property
 
 ## example
 
@@ -55,9 +49,9 @@ const App = () => {
     >
       <Scrollable
         ref={ins1}
-        uniqueKey={'instance1'}
+        id={'instance1'}
         direction={'y'}
-        scrollbar={{ imgSrc, size: 10 }}
+        scrollbar={{ size: 10 }}
         onScroll={(v) => {
           console.log(v, 'scroll');
         }}
@@ -82,7 +76,7 @@ const App = () => {
       </div>
       {!dispose && (
         <>
-          <Scrollable uniqueKey={'instance2'} direction={'x'} scrollbar={{ size: 20 }}>
+          <Scrollable id={'instance2'} direction={'x'} scrollbar={{ size: 20, imgSrc }}>
             <div className="flexbox2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
@@ -91,6 +85,13 @@ const App = () => {
                   onClick={() => {
                     console.log('clk');
                   }}
+                  style={
+                    i === 3
+                      ? {
+                          marginLeft: 100,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -139,10 +140,13 @@ export default App;
 
 .box1 {
   background-color: red;
+  margin: 8px;
 }
 
 .box2 {
   background-color: yellow;
+  margin-left: 30px;
+  margin-top: 20px;
 }
 
 .box3 {
@@ -152,11 +156,13 @@ export default App;
 
 .box4 {
   background-color: purple;
+  margin: 22px 11px 42px;
 }
 
 .box5 {
   background-color: peru;
+  margin-bottom: 20px;
+  margin-right: 10px;
 }
 
 ```
-

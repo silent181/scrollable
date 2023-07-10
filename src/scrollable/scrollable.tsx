@@ -24,7 +24,7 @@ const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
 const scrollbarId = 'J_scrollbar';
 
 const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<ScrollableInstance>) => {
-  const { scrollbar, onScroll, direction, uniqueKey, children } = props;
+  const { scrollbar, onScroll, direction, id, children } = props;
   const { size, margin, disableInteraction, backgroundColor, imgSrc, borderRadius } = {
     ...defaultScrollbarProps,
     ...scrollbar,
@@ -61,7 +61,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     });
 
     controllerRef.current = controller;
-    controller.register(uniqueKey);
+    controller.register(id);
 
     const handleStart = (e: any) => {
       controller.handleContainerStart(e);
@@ -112,9 +112,9 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       scrollbarEl.removeEventListener('touchstart', handleScrollbarStart);
       flexContainerEl.removeEventListener('wheel', handleWheel);
 
-      controller.unregister(uniqueKey);
+      controller.unregister(id);
     };
-  }, [direction, disableInteraction, methods, uniqueKey]);
+  }, [direction, disableInteraction, methods, id]);
 
   useImperativeHandle(ref, () => methods);
 
@@ -146,7 +146,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   };
 
   return (
-    <div className="scrollable-wrapper" ref={containerRef} onDragStart={(e) => e.preventDefault()} data-key={uniqueKey}>
+    <div className="scrollable-wrapper" ref={containerRef} onDragStart={(e) => e.preventDefault()} data-scroll-id={id}>
       {cloneElement(children as ReactElement, { ref: flexContainerRef })}
       <div
         id={scrollbarId}
