@@ -73,6 +73,11 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     controller.register(id);
 
     const handleStart = (e: any) => {
+      // wheel click down
+      if (e.button === 1) {
+        return;
+      }
+
       controller.handleContainerStart(e);
     };
 
@@ -95,6 +100,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
     const handleWheel = (e: any) => {
       controller.handleWheel(e);
+      e.stopPropagation();
     };
 
     flexContainerEl.addEventListener('mousedown', handleStart);
