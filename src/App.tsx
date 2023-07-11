@@ -2,6 +2,7 @@ import Scrollable, { ScrollableInstance } from './scrollable';
 import { useRef, useState } from 'react';
 
 import './App.css';
+import DynamicChildren from './DynamicChildren';
 
 const imgSrc = '/bar.jpg';
 
@@ -37,17 +38,7 @@ const App = () => {
           console.log(v, 'scroll');
         }}
       >
-        <div className="flexbox1">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className={`box box${i + 1}`}
-              onClick={() => {
-                console.log('clk');
-              }}
-            />
-          ))}
-        </div>
+        <DynamicChildren id={'instance1'} />
       </Scrollable>
       <div style={{ marginTop: 10, marginBottom: 10 }}>
         <button style={{ marginRight: 40 }} onClick={prev}>

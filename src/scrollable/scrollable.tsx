@@ -8,6 +8,7 @@ import {
   useMemo,
   ReactElement,
   CSSProperties,
+  useState,
 } from 'react';
 
 import './index.css';
@@ -17,6 +18,7 @@ import { Controller } from './controller';
 const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
   size: 6,
   margin: 2,
+  borderRadius: 20,
   disableInteraction: false,
   backgroundColor: '#999',
 };
@@ -24,15 +26,18 @@ const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
 const scrollbarId = 'J_scrollbar';
 
 const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<ScrollableInstance>) => {
-  const { scrollbar, onScroll, direction, id, children } = props;
+  const { scrollbar, onScroll, direction, id, children, style } = props;
   const { size, margin, disableInteraction, backgroundColor, imgSrc, borderRadius } = {
     ...defaultScrollbarProps,
     ...scrollbar,
   };
 
+  const [_, forceUpdate] = useState(1);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const flexContainerRef = useRef<HTMLDivElement>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller>();
 
   const onScrollRef = useRef(onScroll);
@@ -51,16 +56,20 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
   useEffect(() => {
     const flexContainerEl = flexContainerRef.current!;
-    const scrollbarEl = scrollbarRef.current!;
+    const thumbEl = thumbRef.current!;
+
+    const update = () => forceUpdate((c) => c + 1);
 
     const controller = new Controller({
       flexContainer: flexContainerEl,
-      scrollbar: scrollbarEl,
+      scrollbarThumb: thumbEl,
       direction,
       onScrollRef,
+      forceUpdate: update,
     });
 
     controllerRef.current = controller;
+
     controller.register(id);
 
     const handleStart = (e: any) => {
@@ -94,31 +103,75 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     document.addEventListener('touchmove', handleMove);
     document.addEventListener('mouseup', handleEnd);
     document.addEventListener('touchend', handleEnd);
-    scrollbarEl.addEventListener('mousedown', handleScrollbarStart);
-    scrollbarEl.addEventListener('touchstart', handleScrollbarStart);
+    thumbEl.addEventListener('mousedown', handleScrollbarStart);
+    thumbEl.addEventListener('touchstart', handleScrollbarStart);
 
     if (direction === 'y') {
       flexContainerEl.addEventListener('wheel', handleWheel);
     }
 
-    return () => {
+    let observer: MutationObserver | null = null;
+
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(update);
+      observer.observe(flexContainerEl, {
+        childList: true,
+        subtree: true,
+      });
+    } else {
+      console.warn('your env does not support MutationObserver');
+    }
+
+    const clear = (eventOnly = false) => {
       flexContainerEl.removeEventListener('mousedown', handleStart);
       flexContainerEl.removeEventListener('touchstart', handleStart);
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
       document.removeEventListener('touchend', handleEnd);
-      scrollbarEl.removeEventListener('mousedown', handleScrollbarStart);
-      scrollbarEl.removeEventListener('touchstart', handleScrollbarStart);
+      thumbEl.removeEventListener('mousedown', handleScrollbarStart);
+      thumbEl.removeEventListener('touchstart', handleScrollbarStart);
       flexContainerEl.removeEventListener('wheel', handleWheel);
 
-      controller.unregister(id);
+      if (!eventOnly) {
+        controller.unregister(id);
+        observer && observer.disconnect();
+      }
     };
-  }, [direction, disableInteraction, methods, id]);
+
+    if (controller.info.noScroll) {
+      clear(true);
+    }
+
+    return () => clear();
+  });
 
   useImperativeHandle(ref, () => methods);
 
   const getBarStyle = () => {
+    let styles: CSSProperties = {};
+
+    if (direction === 'x') {
+      styles = {
+        width: '100%',
+        height: size,
+        bottom: margin,
+      };
+    }
+
+    if (direction === 'y') {
+      styles = {
+        width: size,
+        height: '100%',
+        right: margin,
+        top: 0,
+      };
+    }
+
+    return styles;
+  };
+
+  const getThumbStyle = () => {
     let styles: CSSProperties = {
       backgroundColor,
       borderRadius,
@@ -128,17 +181,14 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     if (direction === 'x') {
       styles = {
         ...styles,
-        height: size,
-        bottom: margin,
+        height: '100%',
       };
     }
 
     if (direction === 'y') {
       styles = {
         ...styles,
-        width: size,
-        right: margin,
-        top: 0,
+        width: '100%',
       };
     }
 
@@ -146,16 +196,18 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   };
 
   return (
-    <div className="scrollable-wrapper" ref={containerRef} onDragStart={(e) => e.preventDefault()} data-scroll-id={id}>
+    <div
+      className="scrollable-wrapper"
+      ref={containerRef}
+      onDragStart={(e) => e.preventDefault()}
+      data-scroll-id={id}
+      style={style}
+    >
       {cloneElement(children as ReactElement, { ref: flexContainerRef })}
-      <div
-        id={scrollbarId}
-        className="scrollable-scrollbar"
-        data-sb-methods={methods}
-        ref={scrollbarRef}
-        style={getBarStyle()}
-      >
-        {imgSrc ? <img className="scrollable-scrollbar-img" src={imgSrc} /> : null}
+      <div id={scrollbarId} className="scrollable-scrollbar" ref={scrollbarRef} style={getBarStyle()}>
+        <div className="scrollable-scrollbar-thumb" ref={thumbRef} style={getThumbStyle()}>
+          {imgSrc ? <img className="scrollable-scrollbar-img" src={imgSrc} /> : null}
+        </div>
       </div>
     </div>
   );

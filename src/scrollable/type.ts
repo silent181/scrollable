@@ -22,6 +22,7 @@ export interface ScrollableProps {
     imgSrc?: string;
     borderRadius?: number;
   };
+  style?: CSSProperties;
 }
 
 export type BaseInfo = {
@@ -30,15 +31,18 @@ export type BaseInfo = {
   containerLength: number;
   scrollLength: number;
   thumbLength: number;
+  thumbLengthPercent: string;
   thumbScrollLength: number;
   thumbScrollRatio: number;
   scrollbarProp: 'width' | 'height';
+  noScroll: boolean;
 };
 
 export interface ControllerOptions {
   flexContainer: HTMLElement;
-  scrollbar: HTMLElement;
+  scrollbarThumb: HTMLElement;
   direction: Direction;
+  forceUpdate: () => void;
   onScrollRef?: MutableRefObject<ScrollCallback | undefined>;
   transitionTime?: number;
 }

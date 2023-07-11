@@ -9,12 +9,16 @@
 
 .scrollable-scrollbar {
   position: absolute;
-  opacity: 0.5;
-  border-radius: 20px;
   overflow: hidden;
 }
 
-.scrollable-scrollbar:hover {
+.scrollable-scrollbar-thumb {
+  position: absolute;
+  opacity: 0.5;
+  overflow: hidden;
+}
+
+.scrollable-scrollbar-thumb:hover {
   opacity: 1;
 }
 

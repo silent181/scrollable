@@ -16,10 +16,6 @@ export class ScrollManager {
   }
 
   register(key: string, controller: Controller) {
-    if (this.map.has(key)) {
-      return;
-    }
-
     this.map.set(key, controller);
   }
 

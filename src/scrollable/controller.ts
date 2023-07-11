@@ -12,9 +12,11 @@ const raf = (cb: () => void) => {
 
 export class Controller {
   flexContainer: HTMLElement;
-  scrollbar: HTMLElement;
+  scrollbarThumb: HTMLElement;
+  scrollbarWrapper: HTMLElement;
   info: BaseInfo;
   direction: Direction;
+  forceUpdate: () => void;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
@@ -28,14 +30,20 @@ export class Controller {
 
   constructor(options: ControllerOptions) {
     this.flexContainer = options.flexContainer;
-    this.scrollbar = options.scrollbar;
+    this.scrollbarWrapper = options.flexContainer.nextElementSibling as HTMLElement;
+    this.scrollbarThumb = options.scrollbarThumb;
     this.direction = options.direction;
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
+    this.forceUpdate = options.forceUpdate;
 
     this.info = this.getBaseInfo();
 
-    this.init();
+    if (this.info.noScroll) {
+      this.setNoScroll();
+    } else {
+      this.init();
+    }
   }
 
   public handleContainerStart = (e: any) => {
@@ -43,8 +51,8 @@ export class Controller {
   };
 
   public handleScrollbarStart = (e: any) => {
-    this.startScroll(e, 'scrollbar');
-    this.scrollbar.style.opacity = '1';
+    this.startScroll(e, 'scrollbarThumb');
+    this.scrollbarThumb.style.opacity = '1';
   };
 
   public handleMove = (e: any) => {
@@ -72,7 +80,7 @@ export class Controller {
   public handleEnd = () => {
     this.scrollbarScrolling = false;
     this.containerScrolling = false;
-    this.scrollbar.style.removeProperty('opacity');
+    this.scrollbarThumb.style.removeProperty('opacity');
   };
 
   public handleWheel = (e: WheelEvent) => {
@@ -85,7 +93,7 @@ export class Controller {
   };
 
   public scroll = (relativeValue: number) => {
-    if (this.isTransition) {
+    if (this.isTransition || this.info.noScroll) {
       return;
     }
 
@@ -135,14 +143,16 @@ export class Controller {
       return height + margins.top + margins.bottom;
     };
 
-    const flexItems = Array.from(this.flexContainer.children) as HTMLElement[];
+    const flexItems = (this.flexContainer?.children ? Array.from(this.flexContainer.children) : []) as HTMLElement[];
     const totalLength = flexItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
     const scrollbarProp = this.direction === 'x' ? 'width' : 'height';
     const containerLength = this.flexContainer.getBoundingClientRect()[scrollbarProp];
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
+    const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
     const thumbScrollLength = containerLength - thumbLength;
     const thumbScrollRatio = thumbScrollLength / scrollLength;
+    const noScroll = totalLength <= containerLength;
 
     return {
       flexItems,
@@ -153,12 +163,21 @@ export class Controller {
       thumbLength,
       thumbScrollLength,
       thumbScrollRatio,
+      thumbLengthPercent,
+      noScroll,
     } as BaseInfo;
   };
 
   private init = () => {
-    this.scrollbar.style[this.info.scrollbarProp] = `${this.info.thumbLength}px`;
+    this.scrollbarThumb.style[this.info.scrollbarProp] = this.info.thumbLengthPercent;
     this.flexContainer?.classList?.add('__flex_container__');
+    this.scrollbarWrapper.style.display = 'block';
+  };
+
+  private setNoScroll = () => {
+    this.flexContainer?.classList?.remove('__flex_container__');
+    this.scrollbarWrapper.style.display = 'none';
+    this.info.flexItems.forEach((el) => el.style.removeProperty('transform'));
   };
 
   private getStartPosition = () => {
@@ -189,7 +208,7 @@ export class Controller {
     return (e as TouchEvent).touches[0][prop];
   };
 
-  private startScroll = (e: any, type: 'container' | 'scrollbar') => {
+  private startScroll = (e: any, type: 'container' | 'scrollbarThumb') => {
     if (type === 'container') {
       this.containerScrolling = true;
     } else {
@@ -205,12 +224,12 @@ export class Controller {
     this.info.flexItems.forEach((el) => {
       el.style.transition = `${this.transitionTime / 1000}s`;
     });
-    this.scrollbar.style.transition = `${this.transitionTime / 1000}s`;
+    this.scrollbarThumb.style.transition = `${this.transitionTime / 1000}s`;
   };
 
   private endTransition = () => {
     setTimeout(() => {
-      this.scrollbar.style.removeProperty('transition');
+      this.scrollbarThumb.style.removeProperty('transition');
       this.info.flexItems.forEach((el) => {
         el.style.removeProperty('transition');
       });
@@ -230,7 +249,7 @@ export class Controller {
     const ratio = this.info.thumbScrollRatio;
 
     raf(() => {
-      this.scrollbar.style.transform = `translate${this.direction.toUpperCase()}(${-scrollValue * ratio}px)`;
+      this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${-scrollValue * ratio}px)`;
     });
   };
 
