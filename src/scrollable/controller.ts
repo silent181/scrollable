@@ -1,5 +1,7 @@
 import { MutableRefObject } from 'react';
-import { BaseInfo, Direction, ScrollCallback, ScrollInfo, ControllerOptions } from './type';
+
+import { BaseInfo, ScrollDirection, ScrollCallback, ScrollInfo, ControllerOptions } from './type';
+
 import { scrollManager } from './manager';
 
 const raf = (cb: () => void) => {
@@ -10,12 +12,32 @@ const raf = (cb: () => void) => {
   }
 };
 
+const px2Rem = (px: number) => {
+  const fontSize = document.documentElement.style.fontSize;
+
+  if (fontSize) {
+    return `${px / parseFloat(fontSize)}rem`;
+  }
+
+  return '0rem';
+};
+
+const rem2Px = (rem: number) => {
+  const fontSize = document.documentElement.style.fontSize;
+
+  if (fontSize) {
+    return rem * parseFloat(fontSize);
+  }
+
+  return 0;
+};
+
 export class Controller {
   flexContainer: HTMLElement;
   scrollbarThumb: HTMLElement;
   scrollbarWrapper: HTMLElement;
   info: BaseInfo;
-  direction: Direction;
+  direction: ScrollDirection;
   forceUpdate: () => void;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
@@ -27,6 +49,7 @@ export class Controller {
   private lastScrollValue = 0;
   private startPosition: ScrollInfo = { x: undefined, y: undefined };
   private transitionTime: number;
+  private unit?: ControllerOptions['unit'];
 
   constructor(options: ControllerOptions) {
     this.flexContainer = options.flexContainer;
@@ -36,15 +59,23 @@ export class Controller {
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
     this.forceUpdate = options.forceUpdate;
+    this.unit = options.unit || 'px';
 
     this.info = this.getBaseInfo();
-
-    if (this.info.noScroll) {
-      this.setNoScroll();
-    } else {
-      this.init();
-    }
+    console.log(this.info, 'info');
   }
+
+  public init = () => {
+    this.scrollbarThumb.style[this.info.scrollbarProp] = this.info.thumbLengthPercent;
+    this.flexContainer?.classList?.add('__flex_container__');
+    this.scrollbarWrapper.style.display = 'block';
+  };
+
+  public setNoScroll = () => {
+    this.flexContainer?.classList?.remove('__flex_container__');
+    this.scrollbarWrapper.style.display = 'none';
+    this.info.flexItems.forEach((el) => this.removeProperty(el, 'transform'));
+  };
 
   public handleContainerStart = (e: any) => {
     this.startScroll(e, 'container');
@@ -80,7 +111,7 @@ export class Controller {
   public handleEnd = () => {
     this.scrollbarScrolling = false;
     this.containerScrolling = false;
-    this.scrollbarThumb.style.removeProperty('opacity');
+    this.removeProperty(this.scrollbarThumb, 'opacity');
   };
 
   public handleWheel = (e: WheelEvent) => {
@@ -117,7 +148,15 @@ export class Controller {
       const { width, height } = item.getBoundingClientRect();
 
       const calcMargin = (item: HTMLElement) => {
-        const getValueByPx = (px: string) => Number(px.slice(0, -2));
+        const getValueByProperty = (propVal: string) => {
+          const numberVal = parseFloat(propVal);
+
+          if (propVal.includes('rem')) {
+            return rem2Px(numberVal);
+          }
+
+          return numberVal;
+        };
 
         const style = window.getComputedStyle(item);
 
@@ -127,10 +166,10 @@ export class Controller {
         const left = (style.marginLeft || style['margin-left' as keyof CSSStyleDeclaration]) as string;
 
         return {
-          top: getValueByPx(top),
-          right: getValueByPx(right),
-          bottom: getValueByPx(bottom),
-          left: getValueByPx(left),
+          top: getValueByProperty(top),
+          right: getValueByProperty(right),
+          bottom: getValueByProperty(bottom),
+          left: getValueByProperty(left),
         };
       };
 
@@ -168,18 +207,6 @@ export class Controller {
     } as BaseInfo;
   };
 
-  private init = () => {
-    this.scrollbarThumb.style[this.info.scrollbarProp] = this.info.thumbLengthPercent;
-    this.flexContainer?.classList?.add('__flex_container__');
-    this.scrollbarWrapper.style.display = 'block';
-  };
-
-  private setNoScroll = () => {
-    this.flexContainer?.classList?.remove('__flex_container__');
-    this.scrollbarWrapper.style.display = 'none';
-    this.info.flexItems.forEach((el) => el.style.removeProperty('transform'));
-  };
-
   private getStartPosition = () => {
     const p = this.startPosition;
 
@@ -188,6 +215,14 @@ export class Controller {
     }
 
     return p.y!;
+  };
+
+  private removeProperty = (el: HTMLElement, prop: string) => {
+    if (typeof el.style.removeProperty === 'function') {
+      el.style.removeProperty(prop);
+    } else {
+      el.style[prop as any] = '';
+    }
   };
 
   private setStartPosition = (value: number) => {
@@ -222,16 +257,16 @@ export class Controller {
   private startTransition = () => {
     this.isTransition = true;
     this.info.flexItems.forEach((el) => {
-      el.style.transition = `${this.transitionTime / 1000}s`;
+      el.style.transition = `transform ${this.transitionTime / 1000}s`;
     });
     this.scrollbarThumb.style.transition = `${this.transitionTime / 1000}s`;
   };
 
   private endTransition = () => {
     setTimeout(() => {
-      this.scrollbarThumb.style.removeProperty('transition');
+      this.removeProperty(this.scrollbarThumb, 'transition');
       this.info.flexItems.forEach((el) => {
-        el.style.removeProperty('transition');
+        this.removeProperty(el, 'transition');
       });
       this.isTransition = false;
     }, this.transitionTime + 100);
@@ -240,7 +275,7 @@ export class Controller {
   private moveItems = (scrollValue: number) => {
     this.info.flexItems.forEach((el) => {
       raf(() => {
-        el.style.transform = `translate${this.direction.toUpperCase()}(${scrollValue}px)`;
+        el.style.transform = `translate${this.direction.toUpperCase()}(${this.getScrollValueStr(scrollValue)})`;
       });
     });
   };
@@ -249,7 +284,9 @@ export class Controller {
     const ratio = this.info.thumbScrollRatio;
 
     raf(() => {
-      this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${-scrollValue * ratio}px)`;
+      this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${this.getScrollValueStr(
+        -scrollValue * ratio
+      )})`;
     });
   };
 
@@ -281,5 +318,13 @@ export class Controller {
     const computedValue = this.lastScrollValue + -diff / this.info.thumbScrollRatio;
 
     this.doScroll(computedValue);
+  };
+
+  private getScrollValueStr = (scrollValue: number) => {
+    if (this.unit === 'rem') {
+      return `${px2Rem(scrollValue)}rem`;
+    }
+
+    return `${scrollValue}px`;
   };
 }

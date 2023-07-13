@@ -6,13 +6,12 @@ import {
   ForwardedRef,
   useImperativeHandle,
   useMemo,
-  ReactElement,
   CSSProperties,
   useState,
 } from 'react';
-
 import './index.css';
 import { ScrollableInstance, ScrollableProps } from './type';
+
 import { Controller } from './controller';
 
 const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
@@ -69,8 +68,6 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     });
 
     controllerRef.current = controller;
-
-    controller.register(id);
 
     const handleStart = (e: any) => {
       // wheel click down
@@ -145,8 +142,13 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       }
     };
 
+    controller.register(id);
+
     if (controller.info.noScroll) {
+      controller.setNoScroll();
       clear(true);
+    } else {
+      controller.init();
     }
 
     return () => clear();
@@ -209,7 +211,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       data-scroll-id={id}
       style={style}
     >
-      {cloneElement(children as ReactElement, { ref: flexContainerRef })}
+      {cloneElement(children, { ref: flexContainerRef })}
       <div id={scrollbarId} className="scrollable-scrollbar" ref={scrollbarRef} style={getBarStyle()}>
         <div className="scrollable-scrollbar-thumb" ref={thumbRef} style={getThumbStyle()}>
           {imgSrc ? <img className="scrollable-scrollbar-img" src={imgSrc} /> : null}
