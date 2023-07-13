@@ -37,6 +37,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   const flexContainerRef = useRef<HTMLDivElement>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller>();
 
   const onScrollRef = useRef(onScroll);
@@ -54,14 +55,20 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   }, []);
 
   useEffect(() => {
+    const containerEl = containerRef.current!;
     const flexContainerEl = flexContainerRef.current!;
+    const viewportEl = viewportRef.current!;
     const thumbEl = thumbRef.current!;
+    const scrollbarWrapperEl = scrollbarRef.current!;
 
     const update = () => forceUpdate((c) => c + 1);
 
     const controller = new Controller({
       flexContainer: flexContainerEl,
       scrollbarThumb: thumbEl,
+      scrollbarWrapper: scrollbarWrapperEl,
+      viewport: viewportEl,
+      container: containerEl,
       direction,
       onScrollRef,
       forceUpdate: update,
@@ -100,8 +107,8 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       e.stopPropagation();
     };
 
-    flexContainerEl.addEventListener('mousedown', handleStart);
-    flexContainerEl.addEventListener('touchstart', handleStart);
+    viewportEl.addEventListener('mousedown', handleStart);
+    viewportEl.addEventListener('touchstart', handleStart);
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('touchmove', handleMove);
     document.addEventListener('mouseup', handleEnd);
@@ -110,13 +117,24 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     thumbEl.addEventListener('touchstart', handleScrollbarStart);
 
     if (direction === 'y') {
-      flexContainerEl.addEventListener('wheel', handleWheel);
+      viewportEl.addEventListener('wheel', handleWheel);
     }
 
     let observer: MutationObserver | null = null;
 
     if (typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver(update);
+      observer = new MutationObserver(() => {
+        const prevController = controller;
+        update();
+
+        /**
+         * refresh scroll position
+         */
+        setTimeout(() => {
+          const currrentController = controllerRef.current;
+          currrentController?.scroll(-prevController.scrollValue);
+        }, 200);
+      });
       observer.observe(flexContainerEl, {
         childList: true,
         subtree: true,
@@ -126,15 +144,15 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     }
 
     const clear = (eventOnly = false) => {
-      flexContainerEl.removeEventListener('mousedown', handleStart);
-      flexContainerEl.removeEventListener('touchstart', handleStart);
+      viewportEl.removeEventListener('mousedown', handleStart);
+      viewportEl.removeEventListener('touchstart', handleStart);
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
       document.removeEventListener('touchend', handleEnd);
       thumbEl.removeEventListener('mousedown', handleScrollbarStart);
       thumbEl.removeEventListener('touchstart', handleScrollbarStart);
-      flexContainerEl.removeEventListener('wheel', handleWheel);
+      viewportEl.removeEventListener('wheel', handleWheel);
 
       if (!eventOnly) {
         controller.unregister(id);
@@ -211,7 +229,9 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       data-scroll-id={id}
       style={style}
     >
-      {cloneElement(children, { ref: flexContainerRef })}
+      <div className="scrollable-viewport" ref={viewportRef}>
+        {cloneElement(children, { ref: flexContainerRef })}
+      </div>
       <div id={scrollbarId} className="scrollable-scrollbar" ref={scrollbarRef} style={getBarStyle()}>
         <div className="scrollable-scrollbar-thumb" ref={thumbRef} style={getThumbStyle()}>
           {imgSrc ? <img className="scrollable-scrollbar-img" src={imgSrc} /> : null}

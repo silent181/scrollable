@@ -34,13 +34,15 @@ export type BaseInfo = {
   thumbLengthPercent: string;
   thumbScrollLength: number;
   thumbScrollRatio: number;
-  scrollbarProp: 'width' | 'height';
   noScroll: boolean;
 };
 
 export interface ControllerOptions {
   flexContainer: HTMLElement;
   scrollbarThumb: HTMLElement;
+  scrollbarWrapper: HTMLElement;
+  viewport: HTMLElement;
+  container: HTMLElement;
   direction: ScrollDirection;
   forceUpdate: () => void;
   onScrollRef?: MutableRefObject<ScrollCallback | undefined>;

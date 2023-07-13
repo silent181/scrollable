@@ -36,16 +36,18 @@ export class Controller {
   flexContainer: HTMLElement;
   scrollbarThumb: HTMLElement;
   scrollbarWrapper: HTMLElement;
+  viewport: HTMLElement;
+  container: HTMLElement;
   info: BaseInfo;
   direction: ScrollDirection;
   forceUpdate: () => void;
+  scrollValue = 0;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
-  private isTransition = false;
+  private isTransitioning = false;
   private containerScrolling = false;
   private scrollbarScrolling = false;
-  private scrollValue = 0;
   private lastScrollValue = 0;
   private startPosition: ScrollInfo = { x: undefined, y: undefined };
   private transitionTime: number;
@@ -53,8 +55,10 @@ export class Controller {
 
   constructor(options: ControllerOptions) {
     this.flexContainer = options.flexContainer;
-    this.scrollbarWrapper = options.flexContainer.nextElementSibling as HTMLElement;
+    this.scrollbarWrapper = options.scrollbarWrapper;
     this.scrollbarThumb = options.scrollbarThumb;
+    this.viewport = options.viewport;
+    this.container = options.container;
     this.direction = options.direction;
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
@@ -62,19 +66,24 @@ export class Controller {
     this.unit = options.unit || 'px';
 
     this.info = this.getBaseInfo();
-    console.log(this.info, 'info');
+  }
+
+  get viewportProp() {
+    return this.direction === 'x' ? 'width' : 'height';
   }
 
   public init = () => {
-    this.scrollbarThumb.style[this.info.scrollbarProp] = this.info.thumbLengthPercent;
-    this.flexContainer?.classList?.add('__flex_container__');
+    this.scrollbarThumb.style[this.viewportProp] = this.info.thumbLengthPercent;
     this.scrollbarWrapper.style.display = 'block';
+    this.container.style[this.viewportProp] = this.getValueStr(this.info.containerLength);
+    this.viewport.style[this.viewportProp] = this.getValueStr(this.info.totalLength);
+    this.viewport.style.backgroundColor = getComputedStyle(this.flexContainer).backgroundColor;
   };
 
   public setNoScroll = () => {
-    this.flexContainer?.classList?.remove('__flex_container__');
     this.scrollbarWrapper.style.display = 'none';
-    this.info.flexItems.forEach((el) => this.removeProperty(el, 'transform'));
+    this.viewport.removeAttribute('style');
+    this.container.removeAttribute('style');
   };
 
   public handleContainerStart = (e: any) => {
@@ -111,7 +120,7 @@ export class Controller {
   public handleEnd = () => {
     this.scrollbarScrolling = false;
     this.containerScrolling = false;
-    this.removeProperty(this.scrollbarThumb, 'opacity');
+    this.removeStyleProp(this.scrollbarThumb, 'opacity');
   };
 
   public handleWheel = (e: WheelEvent) => {
@@ -123,16 +132,16 @@ export class Controller {
     this.doScroll(nextScrollValue, true);
   };
 
-  public scroll = (relativeValue: number) => {
-    if (this.isTransition || this.info.noScroll) {
+  public scroll = (relativeValue: number, animation = true) => {
+    if (this.isTransitioning || this.info.noScroll) {
       return;
     }
 
     const computedValue = this.scrollValue - relativeValue;
 
-    this.startTransition();
+    animation && this.startTransition();
     this.doScroll(computedValue, true);
-    this.endTransition();
+    animation && this.endTransition();
   };
 
   public register = (key: string) => {
@@ -184,8 +193,7 @@ export class Controller {
 
     const flexItems = (this.flexContainer?.children ? Array.from(this.flexContainer.children) : []) as HTMLElement[];
     const totalLength = flexItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
-    const scrollbarProp = this.direction === 'x' ? 'width' : 'height';
-    const containerLength = this.flexContainer.getBoundingClientRect()[scrollbarProp];
+    const containerLength = this.flexContainer.getBoundingClientRect()[this.viewportProp];
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
     const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
@@ -195,7 +203,6 @@ export class Controller {
 
     return {
       flexItems,
-      scrollbarProp,
       totalLength,
       containerLength,
       scrollLength,
@@ -217,7 +224,7 @@ export class Controller {
     return p.y!;
   };
 
-  private removeProperty = (el: HTMLElement, prop: string) => {
+  private removeStyleProp = (el: HTMLElement, prop: string) => {
     if (typeof el.style.removeProperty === 'function') {
       el.style.removeProperty(prop);
     } else {
@@ -255,36 +262,28 @@ export class Controller {
   };
 
   private startTransition = () => {
-    this.isTransition = true;
-    this.info.flexItems.forEach((el) => {
-      el.style.transition = `transform ${this.transitionTime / 1000}s`;
-    });
+    this.isTransitioning = true;
+    this.viewport.style.transition = `transform ${this.transitionTime / 1000}s`;
     this.scrollbarThumb.style.transition = `${this.transitionTime / 1000}s`;
   };
 
   private endTransition = () => {
     setTimeout(() => {
-      this.removeProperty(this.scrollbarThumb, 'transition');
-      this.info.flexItems.forEach((el) => {
-        this.removeProperty(el, 'transition');
-      });
-      this.isTransition = false;
+      this.removeStyleProp(this.scrollbarThumb, 'transition');
+      this.removeStyleProp(this.viewport, 'transition');
+      this.isTransitioning = false;
     }, this.transitionTime + 100);
   };
 
   private moveItems = (scrollValue: number) => {
-    this.info.flexItems.forEach((el) => {
-      raf(() => {
-        el.style.transform = `translate${this.direction.toUpperCase()}(${this.getScrollValueStr(scrollValue)})`;
-      });
-    });
+    this.viewport.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(scrollValue)})`;
   };
 
   private moveScrollbar = (scrollValue: number) => {
     const ratio = this.info.thumbScrollRatio;
 
     raf(() => {
-      this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${this.getScrollValueStr(
+      this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(
         -scrollValue * ratio
       )})`;
     });
@@ -320,11 +319,11 @@ export class Controller {
     this.doScroll(computedValue);
   };
 
-  private getScrollValueStr = (scrollValue: number) => {
+  private getValueStr = (value: number) => {
     if (this.unit === 'rem') {
-      return `${px2Rem(scrollValue)}rem`;
+      return `${px2Rem(value)}rem`;
     }
 
-    return `${scrollValue}px`;
+    return `${value}px`;
   };
 }
