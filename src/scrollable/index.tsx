@@ -1,4 +1,4 @@
-import Scrollable from './scrollable';
+import Scrollable from './Scrollable';
 
 export * from './type';
 
