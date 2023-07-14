@@ -70,15 +70,19 @@ export class Controller {
   }
 
   get viewportProp() {
-    return this.direction === 'x' ? 'width' : 'height';
+    return this.mutuallyExclusive('width', 'height');
   }
 
   get viewportCounterProp() {
-    return this.direction === 'x' ? 'height' : 'width';
+    return this.mutuallyExclusive('height', 'width');
   }
 
   get eventProp() {
-    return this.direction === 'x' ? 'clientX' : 'clientY';
+    return this.mutuallyExclusive('clientX', 'clientY');
+  }
+
+  get extraPaddingProp() {
+    return this.mutuallyExclusive('paddingLeft', 'paddingTop');
   }
 
   public init = (cb?: (noScroll: boolean) => void) => {
@@ -165,11 +169,35 @@ export class Controller {
     scrollManager.unregister(key);
   };
 
+  private mutuallyExclusive = <X, Y>(xVal: X, yVal: Y) => {
+    if (typeof xVal === 'function' && typeof yVal === 'function') {
+      if (this.direction === 'x') {
+        xVal();
+      } else {
+        yVal();
+      }
+    }
+
+    return this.direction === 'x' ? xVal : yVal;
+  };
+
   /**
    * containerLength should always be constant
    */
   private getContainerLength = () => {
     return this.getPropPxValue(this.target, this.viewportProp);
+  };
+
+  /**
+   * calc "paddingLeft" in direction x or "paddingTop" in direction y
+   */
+  private getExtraPadding = () => {
+    const paddingStr = getComputedStyle(this.target)[this.extraPaddingProp];
+    if (parseFloat(paddingStr) > 0) {
+      return this.getDerivedPx(paddingStr);
+    }
+
+    return 0;
   };
 
   private getPropPxValue = (el: HTMLElement, prop: string) => {
@@ -204,18 +232,12 @@ export class Controller {
 
       const margins = calcMargin(item);
 
-      if (this.direction === 'x') {
-        return width + margins.left + margins.right;
-      }
-
-      return height + margins.top + margins.bottom;
+      return this.mutuallyExclusive(width + margins.left + margins.right, height + margins.top + margins.bottom);
     };
 
     const targetItems = (this.target?.children ? Array.from(this.target.children) : []) as HTMLElement[];
-    const totalLength = targetItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
-
+    const totalLength = targetItems.reduce((sum, cur) => sum + getItemLength(cur), 0) + this.getExtraPadding();
     const containerLength = this.getContainerLength();
-
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
     const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
@@ -239,11 +261,7 @@ export class Controller {
   private getStartPosition = () => {
     const p = this.startPosition;
 
-    if (this.direction === 'x') {
-      return p.x!;
-    }
-
-    return p.y!;
+    return this.mutuallyExclusive(p.x!, p.y!);
   };
 
   private removeStyleProp = (el: HTMLElement, prop: string) => {
@@ -255,11 +273,14 @@ export class Controller {
   };
 
   private setStartPosition = (value: number) => {
-    if (this.direction === 'x') {
-      this.startPosition.x = value;
-    } else {
-      this.startPosition.y = value;
-    }
+    this.mutuallyExclusive(
+      () => {
+        this.startPosition.x = value;
+      },
+      () => {
+        this.startPosition.y = value;
+      }
+    );
   };
 
   private getEventPosition = (e: MouseEvent | TouchEvent) => {
