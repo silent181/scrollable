@@ -49,6 +49,7 @@ const App = () => {
       {!dispose && (
         <>
           <Scrollable id={'instance2'} direction={'x'} scrollbar={{ size: 20, imgSrc }}>
+            {/* set width and height explicitly */}
             <div className="flexbox2" data-width="500px" data-height="333px">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
