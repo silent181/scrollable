@@ -43,7 +43,7 @@ const Internal = (props: any, ref: any) => {
    * ! pass "ref" to root flex element is important
    */
   return (
-    <div className="flexbox1" ref={ref}>
+    <div className="flexbox1" ref={ref} data-width="500px" data-height="333px">
       {childrenNode ? childrenNode : loading}
     </div>
   );

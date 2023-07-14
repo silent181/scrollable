@@ -1,4 +1,4 @@
-import {
+import React, {
   useEffect,
   useRef,
   cloneElement,
@@ -9,9 +9,9 @@ import {
   CSSProperties,
   useState,
 } from 'react';
-import './index.css';
-import { ScrollableInstance, ScrollableProps } from './type';
 
+import { ScrollableInstance, ScrollableProps } from './type';
+import './index.css';
 import { Controller } from './controller';
 
 const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
@@ -34,10 +34,10 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   const [_, forceUpdate] = useState(1);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const flexContainerRef = useRef<HTMLDivElement>(null);
+  const targetRef = useRef<HTMLDivElement>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<Controller>();
 
   const onScrollRef = useRef(onScroll);
@@ -45,7 +45,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
   const methods = useMemo(() => {
     return {
       getContainer: () => containerRef.current,
-      getFlexContainer: () => flexContainerRef.current,
+      getTarget: () => targetRef.current,
       getController: () => controllerRef.current,
       getScrollbar: () => containerRef.current!.querySelector(`#${scrollbarId}`),
       scroll: (len: number) => {
@@ -56,18 +56,18 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
   useEffect(() => {
     const containerEl = containerRef.current!;
-    const flexContainerEl = flexContainerRef.current!;
-    const viewportEl = viewportRef.current!;
+    const targetEl = targetRef.current!;
+    const wrapperEl = wrapperRef.current!;
     const thumbEl = thumbRef.current!;
     const scrollbarWrapperEl = scrollbarRef.current!;
 
     const update = () => forceUpdate((c) => c + 1);
 
     const controller = new Controller({
-      flexContainer: flexContainerEl,
+      target: targetEl,
       scrollbarThumb: thumbEl,
       scrollbarWrapper: scrollbarWrapperEl,
-      viewport: viewportEl,
+      wrapper: wrapperEl,
       container: containerEl,
       direction,
       onScrollRef,
@@ -107,8 +107,8 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       e.stopPropagation();
     };
 
-    viewportEl.addEventListener('mousedown', handleStart);
-    viewportEl.addEventListener('touchstart', handleStart);
+    wrapperEl.addEventListener('mousedown', handleStart);
+    wrapperEl.addEventListener('touchstart', handleStart);
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('touchmove', handleMove);
     document.addEventListener('mouseup', handleEnd);
@@ -117,7 +117,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     thumbEl.addEventListener('touchstart', handleScrollbarStart);
 
     if (direction === 'y') {
-      viewportEl.addEventListener('wheel', handleWheel);
+      wrapperEl.addEventListener('wheel', handleWheel);
     }
 
     let observer: MutationObserver | null = null;
@@ -135,7 +135,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
           currrentController?.scroll(-prevController.scrollValue);
         }, 200);
       });
-      observer.observe(flexContainerEl, {
+      observer.observe(targetEl, {
         childList: true,
         subtree: true,
       });
@@ -144,15 +144,15 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     }
 
     const clear = (eventOnly = false) => {
-      viewportEl.removeEventListener('mousedown', handleStart);
-      viewportEl.removeEventListener('touchstart', handleStart);
+      wrapperEl.removeEventListener('mousedown', handleStart);
+      wrapperEl.removeEventListener('touchstart', handleStart);
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
       document.removeEventListener('touchend', handleEnd);
       thumbEl.removeEventListener('mousedown', handleScrollbarStart);
       thumbEl.removeEventListener('touchstart', handleScrollbarStart);
-      viewportEl.removeEventListener('wheel', handleWheel);
+      wrapperEl.removeEventListener('wheel', handleWheel);
 
       if (!eventOnly) {
         controller.unregister(id);
@@ -162,12 +162,11 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
     controller.register(id);
 
-    if (controller.info.noScroll) {
-      controller.setNoScroll();
-      clear(true);
-    } else {
-      controller.init();
-    }
+    controller.init((noScroll) => {
+      if (noScroll) {
+        clear(true);
+      }
+    });
 
     return () => clear();
   });
@@ -223,14 +222,14 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
   return (
     <div
-      className="scrollable-wrapper"
+      className="scrollable-viewport"
       ref={containerRef}
       onDragStart={(e) => e.preventDefault()}
       data-scroll-id={id}
       style={style}
     >
-      <div className="scrollable-viewport" ref={viewportRef}>
-        {cloneElement(children, { ref: flexContainerRef })}
+      <div className="scrollable-wrapper" ref={wrapperRef}>
+        {cloneElement(children, { ref: targetRef })}
       </div>
       <div id={scrollbarId} className="scrollable-scrollbar" ref={scrollbarRef} style={getBarStyle()}>
         <div className="scrollable-scrollbar-thumb" ref={thumbRef} style={getThumbStyle()}>

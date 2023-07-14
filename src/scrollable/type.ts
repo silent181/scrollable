@@ -15,18 +15,18 @@ export interface ScrollableProps {
   id: string;
   onScroll?: (scrollInfo: ScrollInfo) => void;
   scrollbar?: {
-    size?: number;
-    margin?: number;
+    size?: number | string;
+    margin?: number | string;
     disableInteraction?: boolean;
     backgroundColor?: CSSProperties['backgroundColor'];
     imgSrc?: string;
-    borderRadius?: number;
+    borderRadius?: number | string;
   };
   style?: CSSProperties;
 }
 
 export type BaseInfo = {
-  flexItems: HTMLElement[];
+  targetItems: HTMLElement[];
   totalLength: number;
   containerLength: number;
   scrollLength: number;
@@ -38,10 +38,10 @@ export type BaseInfo = {
 };
 
 export interface ControllerOptions {
-  flexContainer: HTMLElement;
+  target: HTMLElement;
   scrollbarThumb: HTMLElement;
   scrollbarWrapper: HTMLElement;
-  viewport: HTMLElement;
+  wrapper: HTMLElement;
   container: HTMLElement;
   direction: ScrollDirection;
   forceUpdate: () => void;

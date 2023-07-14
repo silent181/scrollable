@@ -16,10 +16,10 @@ const px2Rem = (px: number) => {
   const fontSize = document.documentElement.style.fontSize;
 
   if (fontSize) {
-    return `${px / parseFloat(fontSize)}rem`;
+    return px / parseFloat(fontSize);
   }
 
-  return '0rem';
+  return px;
 };
 
 const rem2Px = (rem: number) => {
@@ -29,14 +29,14 @@ const rem2Px = (rem: number) => {
     return rem * parseFloat(fontSize);
   }
 
-  return 0;
+  return rem;
 };
 
 export class Controller {
-  flexContainer: HTMLElement;
+  target: HTMLElement;
   scrollbarThumb: HTMLElement;
   scrollbarWrapper: HTMLElement;
-  viewport: HTMLElement;
+  wrapper: HTMLElement;
   container: HTMLElement;
   info: BaseInfo;
   direction: ScrollDirection;
@@ -54,10 +54,10 @@ export class Controller {
   private unit?: ControllerOptions['unit'];
 
   constructor(options: ControllerOptions) {
-    this.flexContainer = options.flexContainer;
+    this.target = options.target;
     this.scrollbarWrapper = options.scrollbarWrapper;
     this.scrollbarThumb = options.scrollbarThumb;
-    this.viewport = options.viewport;
+    this.wrapper = options.wrapper;
     this.container = options.container;
     this.direction = options.direction;
     this.onScroll = options.onScrollRef;
@@ -66,24 +66,37 @@ export class Controller {
     this.unit = options.unit || 'px';
 
     this.info = this.getBaseInfo();
+    console.log(this.info, 'info');
   }
 
   get viewportProp() {
     return this.direction === 'x' ? 'width' : 'height';
   }
 
-  public init = () => {
-    this.scrollbarThumb.style[this.viewportProp] = this.info.thumbLengthPercent;
-    this.scrollbarWrapper.style.display = 'block';
-    this.container.style[this.viewportProp] = this.getValueStr(this.info.containerLength);
-    this.viewport.style[this.viewportProp] = this.getValueStr(this.info.totalLength);
-    this.viewport.style.backgroundColor = getComputedStyle(this.flexContainer).backgroundColor;
-  };
+  get viewportCounterProp() {
+    return this.direction === 'x' ? 'height' : 'width';
+  }
 
-  public setNoScroll = () => {
-    this.scrollbarWrapper.style.display = 'none';
-    this.viewport.removeAttribute('style');
-    this.container.removeAttribute('style');
+  get eventProp() {
+    return this.direction === 'x' ? 'clientX' : 'clientY';
+  }
+
+  public init = (cb?: (noScroll: boolean) => void) => {
+    if (this.info.noScroll) {
+      this.scrollbarWrapper.style.display = 'none';
+      this.removeStyleProp(this.wrapper, 'transform');
+    } else {
+      this.scrollbarThumb.style[this.viewportProp] = this.info.thumbLengthPercent;
+      this.scrollbarWrapper.style.display = 'block';
+      this.wrapper.style[this.viewportProp] = this.getValueStr(this.info.totalLength);
+      this.wrapper.style[this.viewportCounterProp] = '100%';
+      this.wrapper.style.backgroundColor = getComputedStyle(this.target).backgroundColor;
+    }
+
+    this.container.style.width = this.getValueStr(this.getPropPxValue(this.target, 'width'));
+    this.container.style.height = this.getValueStr(this.getPropPxValue(this.target, 'height'));
+
+    cb?.(this.info.noScroll);
   };
 
   public handleContainerStart = (e: any) => {
@@ -152,21 +165,28 @@ export class Controller {
     scrollManager.unregister(key);
   };
 
+  /**
+   * containerLength should always be constant
+   */
+  private getContainerLength = () => {
+    return this.getPropPxValue(this.target, this.viewportProp);
+  };
+
+  private getPropPxValue = (el: HTMLElement, prop: string) => {
+    const propStr =
+      el.getAttribute(prop) ||
+      el.dataset[prop] ||
+      `${el.getBoundingClientRect?.()?.[prop as 'width' | 'height']}` ||
+      '0';
+
+    return this.getDerivedPx(propStr);
+  };
+
   private getBaseInfo = () => {
     const getItemLength = (item: HTMLElement) => {
       const { width, height } = item.getBoundingClientRect();
 
       const calcMargin = (item: HTMLElement) => {
-        const getValueByProperty = (propVal: string) => {
-          const numberVal = parseFloat(propVal);
-
-          if (propVal.includes('rem')) {
-            return rem2Px(numberVal);
-          }
-
-          return numberVal;
-        };
-
         const style = window.getComputedStyle(item);
 
         const top = (style.marginTop || style['margin-top' as keyof CSSStyleDeclaration]) as string;
@@ -175,10 +195,10 @@ export class Controller {
         const left = (style.marginLeft || style['margin-left' as keyof CSSStyleDeclaration]) as string;
 
         return {
-          top: getValueByProperty(top),
-          right: getValueByProperty(right),
-          bottom: getValueByProperty(bottom),
-          left: getValueByProperty(left),
+          top: this.getDerivedPx(top),
+          right: this.getDerivedPx(right),
+          bottom: this.getDerivedPx(bottom),
+          left: this.getDerivedPx(left),
         };
       };
 
@@ -191,9 +211,11 @@ export class Controller {
       return height + margins.top + margins.bottom;
     };
 
-    const flexItems = (this.flexContainer?.children ? Array.from(this.flexContainer.children) : []) as HTMLElement[];
-    const totalLength = flexItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
-    const containerLength = this.flexContainer.getBoundingClientRect()[this.viewportProp];
+    const targetItems = (this.target?.children ? Array.from(this.target.children) : []) as HTMLElement[];
+    const totalLength = targetItems.reduce((sum, cur) => sum + getItemLength(cur), 0);
+
+    const containerLength = this.getContainerLength();
+
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
     const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
@@ -202,7 +224,7 @@ export class Controller {
     const noScroll = totalLength <= containerLength;
 
     return {
-      flexItems,
+      targetItems,
       totalLength,
       containerLength,
       scrollLength,
@@ -241,7 +263,7 @@ export class Controller {
   };
 
   private getEventPosition = (e: MouseEvent | TouchEvent) => {
-    const prop = this.direction === 'x' ? 'clientX' : 'clientY';
+    const prop = this.eventProp;
 
     if ((e as MouseEvent)[prop]) {
       return (e as MouseEvent)[prop];
@@ -263,20 +285,22 @@ export class Controller {
 
   private startTransition = () => {
     this.isTransitioning = true;
-    this.viewport.style.transition = `transform ${this.transitionTime / 1000}s`;
+    this.wrapper.style.transition = `transform ${this.transitionTime / 1000}s`;
     this.scrollbarThumb.style.transition = `${this.transitionTime / 1000}s`;
   };
 
   private endTransition = () => {
     setTimeout(() => {
       this.removeStyleProp(this.scrollbarThumb, 'transition');
-      this.removeStyleProp(this.viewport, 'transition');
+      this.removeStyleProp(this.wrapper, 'transition');
       this.isTransitioning = false;
     }, this.transitionTime + 100);
   };
 
   private moveItems = (scrollValue: number) => {
-    this.viewport.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(scrollValue)})`;
+    raf(() => {
+      this.wrapper.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(scrollValue)})`;
+    });
   };
 
   private moveScrollbar = (scrollValue: number) => {
@@ -325,5 +349,15 @@ export class Controller {
     }
 
     return `${value}px`;
+  };
+
+  private getDerivedPx = (stringVal: string) => {
+    const numberVal = parseFloat(stringVal);
+
+    if (stringVal.includes('rem')) {
+      return rem2Px(numberVal);
+    }
+
+    return numberVal;
   };
 }
