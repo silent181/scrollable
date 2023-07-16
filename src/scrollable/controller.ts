@@ -41,7 +41,7 @@ export class Controller {
   info: BaseInfo;
   direction: ScrollDirection;
   forceUpdate: () => void;
-  scrollValue = 0;
+  _scrollValue = 0;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
@@ -63,6 +63,7 @@ export class Controller {
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
     this.forceUpdate = options.forceUpdate;
+    this._scrollValue = 0;
     this.unit = options.unit || 'px';
 
     this.info = this.getBaseInfo();
@@ -83,6 +84,20 @@ export class Controller {
 
   get extraPaddingProp() {
     return this.mutuallyExclusive('paddingLeft', 'paddingTop');
+  }
+
+  get scrollValue() {
+    return this._scrollValue;
+  }
+
+  set scrollValue(value: number) {
+    this._scrollValue = value;
+    this.moveItems(value);
+    this.moveScrollbar(value);
+    this.onScroll?.current?.({
+      x: this.direction === 'x' ? value : undefined,
+      y: this.direction === 'y' ? value : undefined,
+    });
   }
 
   public init = (cb?: (noScroll: boolean) => void) => {
@@ -344,14 +359,6 @@ export class Controller {
     }
 
     this.scrollValue = value;
-
-    this.moveItems(value);
-    this.moveScrollbar(value);
-
-    this.onScroll?.current?.({
-      x: this.direction === 'x' ? value : undefined,
-      y: this.direction === 'y' ? value : undefined,
-    });
   };
 
   private doScrollbarScroll = (diff: number) => {
