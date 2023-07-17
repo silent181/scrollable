@@ -52,4 +52,6 @@ export interface ControllerOptions {
 
 export interface ScrollableInstance {
   scroll: (length: number) => void;
+  scrollToStart: (animation?: boolean) => void;
+  scrollToEnd: (animation?: boolean) => void;
 }

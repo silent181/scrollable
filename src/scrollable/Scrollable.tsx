@@ -51,6 +51,12 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       scroll: (len: number) => {
         controllerRef.current?.scroll(len);
       },
+      scrollToStart: (animation = true) => {
+        controllerRef.current?.scrollToStart(animation);
+      },
+      scrollToEnd: (animation = true) => {
+        controllerRef.current?.scrollToEnd(animation);
+      },
     };
   }, []);
 
@@ -107,6 +113,14 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       e.stopPropagation();
     };
 
+    const handleScrollbarClick = (e: any) => {
+      if (disableInteraction) {
+        return;
+      }
+
+      controller.handleBarClick(e);
+    };
+
     wrapperEl.addEventListener('mousedown', handleStart);
     wrapperEl.addEventListener('touchstart', handleStart);
     document.addEventListener('mousemove', handleMove);
@@ -115,6 +129,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     document.addEventListener('touchend', handleEnd);
     thumbEl.addEventListener('mousedown', handleScrollbarStart);
     thumbEl.addEventListener('touchstart', handleScrollbarStart);
+    scrollbarWrapperEl.addEventListener('click', handleScrollbarClick);
 
     if (direction === 'y') {
       wrapperEl.addEventListener('wheel', handleWheel);
@@ -153,6 +168,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       thumbEl.removeEventListener('mousedown', handleScrollbarStart);
       thumbEl.removeEventListener('touchstart', handleScrollbarStart);
       wrapperEl.removeEventListener('wheel', handleWheel);
+      scrollbarWrapperEl.removeEventListener('click', handleScrollbarClick);
 
       if (!eventOnly) {
         controller.unregister(id);

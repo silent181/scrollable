@@ -86,14 +86,22 @@ export class Controller {
     return this.mutuallyExclusive('paddingLeft', 'paddingTop');
   }
 
+  get scrollbarOffsetProp() {
+    return this.mutuallyExclusive('left', 'top');
+  }
+
+  get scrollbarBoundary() {
+    return this.mutuallyExclusive(['left', 'right'] as const, ['top', 'bottom'] as const);
+  }
+
   get scrollValue() {
     return this._scrollValue;
   }
 
   set scrollValue(value: number) {
     this._scrollValue = value;
-    this.moveItems(value);
-    this.moveScrollbar(value);
+    this.moveItems();
+    this.moveScrollbar();
     this.onScroll?.current?.({
       x: this.direction === 'x' ? value : undefined,
       y: this.direction === 'y' ? value : undefined,
@@ -164,6 +172,33 @@ export class Controller {
     this.doScroll(nextScrollValue, true);
   };
 
+  public handleBarClick = (e: any) => {
+    if (e.target === this.scrollbarThumb || this.scrollbarThumb.contains(e.target)) {
+      return;
+    }
+
+    const mousePosition = this.getEventPosition(e);
+    const thumbLen = this.info.thumbLength;
+    const scrollbarRect = this.scrollbarWrapper.getBoundingClientRect();
+    const [boundaryStartProp, boundaryEndProp] = this.scrollbarBoundary;
+    const minPosition = scrollbarRect[boundaryStartProp] + thumbLen / 2;
+    const maxPosition = scrollbarRect[boundaryEndProp] - thumbLen / 2;
+
+    if (mousePosition <= minPosition) {
+      this.scrollToStart();
+    } else if (mousePosition >= maxPosition) {
+      this.scrollToEnd();
+    } else {
+      const thumbRect = this.scrollbarThumb.getBoundingClientRect();
+      const thumbOffset = thumbRect[this.scrollbarOffsetProp];
+      const targetThumbOffset = mousePosition - thumbLen / 2;
+      const diff = targetThumbOffset - thumbOffset;
+      const computedValue = -Math.abs(this.scrollValue - diff / this.info.thumbScrollRatio);
+
+      this.withAmination()(() => this.doScroll(computedValue, true));
+    }
+  };
+
   public scroll = (relativeValue: number, animation = true) => {
     if (this.isTransitioning || this.info.noScroll) {
       return;
@@ -171,9 +206,19 @@ export class Controller {
 
     const computedValue = this.scrollValue - relativeValue;
 
-    animation && this.startTransition();
-    this.doScroll(computedValue, true);
-    animation && this.endTransition();
+    this.withAmination(animation)(() => this.doScroll(computedValue, true));
+  };
+
+  public scrollToStart = (animation = true) => {
+    this.withAmination(animation)(() => {
+      this.scrollValue = 0;
+    });
+  };
+
+  public scrollToEnd = (animation = true) => {
+    this.withAmination(animation)(() => {
+      this.scrollValue = -this.info.scrollLength;
+    });
   };
 
   public register = (key: string) => {
@@ -194,6 +239,20 @@ export class Controller {
     }
 
     return this.direction === 'x' ? xVal : yVal;
+  };
+
+  private withAmination = (animation = true) => {
+    return (action: () => void) => {
+      if (animation) {
+        this.startTransition();
+      }
+
+      action();
+
+      if (animation) {
+        this.endTransition();
+      }
+    };
   };
 
   /**
@@ -333,18 +392,18 @@ export class Controller {
     }, this.transitionTime + 100);
   };
 
-  private moveItems = (scrollValue: number) => {
+  private moveItems = () => {
     raf(() => {
-      this.wrapper.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(scrollValue)})`;
+      this.wrapper.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(this.scrollValue)})`;
     });
   };
 
-  private moveScrollbar = (scrollValue: number) => {
+  private moveScrollbar = () => {
     const ratio = this.info.thumbScrollRatio;
 
     raf(() => {
       this.scrollbarThumb.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(
-        -scrollValue * ratio
+        -this.scrollValue * ratio
       )})`;
     });
   };

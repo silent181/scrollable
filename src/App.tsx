@@ -18,6 +18,14 @@ const App = () => {
     ins1.current!.scroll(-200);
   };
 
+  const toStart = () => {
+    ins1.current!.scrollToStart();
+  };
+
+  const toEnd = () => {
+    ins1.current!.scrollToEnd();
+  };
+
   return (
     <div
       style={{
@@ -44,7 +52,13 @@ const App = () => {
         <button style={{ marginRight: 40 }} onClick={prev}>
           prev
         </button>
-        <button onClick={next}>next</button>
+        <button style={{ marginRight: 40 }} onClick={next}>
+          next
+        </button>
+        <button style={{ marginRight: 40 }} onClick={toStart}>
+          to start
+        </button>
+        <button onClick={toEnd}>to end</button>
       </div>
       {!dispose && (
         <>
