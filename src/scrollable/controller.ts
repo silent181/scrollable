@@ -381,7 +381,7 @@ export class Controller {
   private startTransition = () => {
     this.isTransitioning = true;
     this.wrapper.style.transition = `transform ${this.transitionTime / 1000}s`;
-    this.scrollbarThumb.style.transition = `${this.transitionTime / 1000}s`;
+    this.scrollbarThumb.style.transition = `transform ${this.transitionTime / 1000}s`;
   };
 
   private endTransition = () => {
