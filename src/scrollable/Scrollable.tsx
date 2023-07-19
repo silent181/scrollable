@@ -25,7 +25,7 @@ const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
 const scrollbarId = 'J_scrollbar';
 
 const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<ScrollableInstance>) => {
-  const { scrollbar, onScroll, direction, id, children, style } = props;
+  const { scrollbar, onScroll, direction, id, unit = 'px', children, style } = props;
   const { size, margin, disableInteraction, backgroundColor, imgSrc, borderRadius } = {
     ...defaultScrollbarProps,
     ...scrollbar,
@@ -78,6 +78,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       direction,
       onScrollRef,
       forceUpdate: update,
+      unit,
     });
 
     controllerRef.current = controller;

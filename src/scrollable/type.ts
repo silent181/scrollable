@@ -23,6 +23,7 @@ export interface ScrollableProps {
     borderRadius?: number | string;
   };
   style?: CSSProperties;
+  unit?: 'px' | 'rem';
 }
 
 export type BaseInfo = {
@@ -47,7 +48,7 @@ export interface ControllerOptions {
   forceUpdate: () => void;
   onScrollRef?: MutableRefObject<ScrollCallback | undefined>;
   transitionTime?: number;
-  unit?: 'px' | 'rem';
+  unit?: ScrollableProps['unit'];
 }
 
 export interface ScrollableInstance {

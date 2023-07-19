@@ -3,34 +3,7 @@ import { MutableRefObject } from 'react';
 import { BaseInfo, ScrollDirection, ScrollCallback, ScrollInfo, ControllerOptions } from './type';
 
 import { scrollManager } from './manager';
-
-const raf = (cb: () => void) => {
-  if (typeof window.requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => cb());
-  } else {
-    cb();
-  }
-};
-
-const px2Rem = (px: number) => {
-  const fontSize = document.documentElement.style.fontSize;
-
-  if (fontSize) {
-    return px / parseFloat(fontSize);
-  }
-
-  return px;
-};
-
-const rem2Px = (rem: number) => {
-  const fontSize = document.documentElement.style.fontSize;
-
-  if (fontSize) {
-    return rem * parseFloat(fontSize);
-  }
-
-  return rem;
-};
+import { getDerivedPx, getPropPxValue, getValueStr, raf, removeStyle } from './utils';
 
 export class Controller {
   target: HTMLElement;
@@ -42,6 +15,7 @@ export class Controller {
   direction: ScrollDirection;
   forceUpdate: () => void;
   _scrollValue = 0;
+  getValueStr: (value: number) => string;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
@@ -65,9 +39,9 @@ export class Controller {
     this.forceUpdate = options.forceUpdate;
     this._scrollValue = 0;
     this.unit = options.unit || 'px';
+    this.getValueStr = getValueStr.bind(this, this.unit);
 
     this.info = this.getBaseInfo();
-    console.log(this.info, 'info');
   }
 
   get viewportProp() {
@@ -111,7 +85,7 @@ export class Controller {
   public init = (cb?: (noScroll: boolean) => void) => {
     if (this.info.noScroll) {
       this.scrollbarWrapper.style.display = 'none';
-      this.removeStyleProp(this.wrapper, 'transform');
+      removeStyle(this.wrapper, 'transform');
     } else {
       this.scrollbarThumb.style[this.viewportProp] = this.info.thumbLengthPercent;
       this.scrollbarWrapper.style.display = 'block';
@@ -120,8 +94,8 @@ export class Controller {
       this.wrapper.style.backgroundColor = getComputedStyle(this.target).backgroundColor;
     }
 
-    this.container.style.width = this.getValueStr(this.getPropPxValue(this.target, 'width'));
-    this.container.style.height = this.getValueStr(this.getPropPxValue(this.target, 'height'));
+    this.container.style.width = this.getValueStr(getPropPxValue(this.target, 'width'));
+    this.container.style.height = this.getValueStr(getPropPxValue(this.target, 'height'));
 
     cb?.(this.info.noScroll);
   };
@@ -160,7 +134,7 @@ export class Controller {
   public handleEnd = () => {
     this.scrollbarScrolling = false;
     this.containerScrolling = false;
-    this.removeStyleProp(this.scrollbarThumb, 'opacity');
+    removeStyle(this.scrollbarThumb, 'opacity');
   };
 
   public handleWheel = (e: WheelEvent) => {
@@ -177,26 +151,9 @@ export class Controller {
       return;
     }
 
-    const mousePosition = this.getEventPosition(e);
-    const thumbLen = this.info.thumbLength;
-    const scrollbarRect = this.scrollbarWrapper.getBoundingClientRect();
-    const [boundaryStartProp, boundaryEndProp] = this.scrollbarBoundary;
-    const minPosition = scrollbarRect[boundaryStartProp] + thumbLen / 2;
-    const maxPosition = scrollbarRect[boundaryEndProp] - thumbLen / 2;
+    const position = this.getEventPosition(e);
 
-    if (mousePosition <= minPosition) {
-      this.scrollToStart();
-    } else if (mousePosition >= maxPosition) {
-      this.scrollToEnd();
-    } else {
-      const thumbRect = this.scrollbarThumb.getBoundingClientRect();
-      const thumbOffset = thumbRect[this.scrollbarOffsetProp];
-      const targetThumbOffset = mousePosition - thumbLen / 2;
-      const diff = targetThumbOffset - thumbOffset;
-      const computedValue = -Math.abs(this.scrollValue - diff / this.info.thumbScrollRatio);
-
-      this.withAmination()(() => this.doScroll(computedValue, true));
-    }
+    this.scrollTo(position);
   };
 
   public scroll = (relativeValue: number, animation = true) => {
@@ -211,13 +168,13 @@ export class Controller {
 
   public scrollToStart = (animation = true) => {
     this.withAmination(animation)(() => {
-      this.scrollValue = 0;
+      this.doScroll(0);
     });
   };
 
   public scrollToEnd = (animation = true) => {
     this.withAmination(animation)(() => {
-      this.scrollValue = -this.info.scrollLength;
+      this.doScroll(-this.info.scrollLength);
     });
   };
 
@@ -259,7 +216,7 @@ export class Controller {
    * containerLength should always be constant
    */
   private getContainerLength = () => {
-    return this.getPropPxValue(this.target, this.viewportProp);
+    return getPropPxValue(this.target, this.viewportProp);
   };
 
   /**
@@ -268,20 +225,10 @@ export class Controller {
   private getExtraPadding = () => {
     const paddingStr = getComputedStyle(this.target)[this.extraPaddingProp];
     if (parseFloat(paddingStr) > 0) {
-      return this.getDerivedPx(paddingStr);
+      return getDerivedPx(paddingStr);
     }
 
     return 0;
-  };
-
-  private getPropPxValue = (el: HTMLElement, prop: string) => {
-    const propStr =
-      el.getAttribute(prop) ||
-      el.dataset[prop] ||
-      `${el.getBoundingClientRect?.()?.[prop as 'width' | 'height']}` ||
-      '0';
-
-    return this.getDerivedPx(propStr);
   };
 
   private getBaseInfo = () => {
@@ -289,7 +236,7 @@ export class Controller {
       const { width, height } = item.getBoundingClientRect();
 
       const calcMargin = (item: HTMLElement) => {
-        const style = window.getComputedStyle(item);
+        const style = getComputedStyle(item);
 
         const top = (style.marginTop || style['margin-top' as keyof CSSStyleDeclaration]) as string;
         const right = (style.marginRight || style['margin-right' as keyof CSSStyleDeclaration]) as string;
@@ -297,10 +244,10 @@ export class Controller {
         const left = (style.marginLeft || style['margin-left' as keyof CSSStyleDeclaration]) as string;
 
         return {
-          top: this.getDerivedPx(top),
-          right: this.getDerivedPx(right),
-          bottom: this.getDerivedPx(bottom),
-          left: this.getDerivedPx(left),
+          top: getDerivedPx(top),
+          right: getDerivedPx(right),
+          bottom: getDerivedPx(bottom),
+          left: getDerivedPx(left),
         };
       };
 
@@ -336,14 +283,6 @@ export class Controller {
     const p = this.startPosition;
 
     return this.mutuallyExclusive(p.x!, p.y!);
-  };
-
-  private removeStyleProp = (el: HTMLElement, prop: string) => {
-    if (typeof el.style.removeProperty === 'function') {
-      el.style.removeProperty(prop);
-    } else {
-      el.style[prop as any] = '';
-    }
   };
 
   private setStartPosition = (value: number) => {
@@ -386,8 +325,8 @@ export class Controller {
 
   private endTransition = () => {
     setTimeout(() => {
-      this.removeStyleProp(this.scrollbarThumb, 'transition');
-      this.removeStyleProp(this.wrapper, 'transition');
+      removeStyle(this.scrollbarThumb, 'transition');
+      removeStyle(this.wrapper, 'transition');
       this.isTransitioning = false;
     }, this.transitionTime + 100);
   };
@@ -430,21 +369,25 @@ export class Controller {
     this.doScroll(computedValue);
   };
 
-  private getValueStr = (value: number) => {
-    if (this.unit === 'rem') {
-      return `${px2Rem(value)}rem`;
+  private scrollTo = (targetPosition: number) => {
+    const thumbLen = this.info.thumbLength;
+    const scrollbarRect = this.scrollbarWrapper.getBoundingClientRect();
+    const [boundaryStartProp, boundaryEndProp] = this.scrollbarBoundary;
+    const minPosition = scrollbarRect[boundaryStartProp] + thumbLen / 2;
+    const maxPosition = scrollbarRect[boundaryEndProp] - thumbLen / 2;
+
+    if (targetPosition <= minPosition) {
+      this.scrollToStart();
+    } else if (targetPosition >= maxPosition) {
+      this.scrollToEnd();
+    } else {
+      const thumbRect = this.scrollbarThumb.getBoundingClientRect();
+      const thumbOffset = thumbRect[this.scrollbarOffsetProp];
+      const targetThumbOffset = targetPosition - thumbLen / 2;
+      const diff = targetThumbOffset - thumbOffset;
+      const computedValue = -Math.abs(this.scrollValue - diff / this.info.thumbScrollRatio);
+
+      this.withAmination()(() => this.doScroll(computedValue, true));
     }
-
-    return `${value}px`;
-  };
-
-  private getDerivedPx = (stringVal: string) => {
-    const numberVal = parseFloat(stringVal);
-
-    if (stringVal.includes('rem')) {
-      return rem2Px(numberVal);
-    }
-
-    return numberVal;
   };
 }
