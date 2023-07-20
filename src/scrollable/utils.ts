@@ -39,8 +39,7 @@ export function getDerivedPx(stringVal: string) {
 }
 
 export function getPropPxValue(el: HTMLElement, prop: string) {
-  const propStr =
-    el.getAttribute(prop) || el.dataset[prop] || `${el.getBoundingClientRect?.()?.[prop as 'width' | 'height']}` || '0';
+  const propStr = el.getAttribute(prop) || el.dataset[prop] || '0';
 
   return getDerivedPx(propStr);
 }
@@ -59,4 +58,37 @@ export function removeStyle(el: HTMLElement, prop: string) {
   } else {
     el.style[prop as any] = '';
   }
+}
+
+export function getItemRect(el: HTMLElement) {
+  const ret = (w: number, h: number) => {
+    return {
+      width: w,
+      height: h,
+    };
+  };
+
+  // prop value has highest priority
+  if (getPropPxValue(el, 'width') > 0 && getPropPxValue(el, 'height') > 0) {
+    return ret(getPropPxValue(el, 'width'), getPropPxValue(el, 'height'));
+  }
+
+  if (el.getBoundingClientRect && el.getBoundingClientRect()?.width > 0 && el.getBoundingClientRect()?.height > 0) {
+    return ret(el.getBoundingClientRect().width, el.getBoundingClientRect().height);
+  }
+
+  if (el.offsetWidth > 0 && el.offsetHeight > 0) {
+    return ret(el.offsetWidth, el.offsetHeight);
+  }
+
+  if (getComputedStyle(el).width && getComputedStyle(el).height) {
+    const w = getComputedStyle(el).width;
+    const h = getComputedStyle(el).height;
+
+    if (parseFloat(w) > 0 && parseFloat(h) > 0) {
+      return ret(getDerivedPx(w), getDerivedPx(h));
+    }
+  }
+
+  return ret(0, 0);
 }

@@ -3,7 +3,7 @@ import { MutableRefObject } from 'react';
 import { BaseInfo, ScrollDirection, ScrollCallback, ScrollInfo, ControllerOptions } from './type';
 
 import { scrollManager } from './manager';
-import { getDerivedPx, getPropPxValue, getValueStr, raf, removeStyle } from './utils';
+import { getDerivedPx, getValueStr, raf, removeStyle, getItemRect } from './utils';
 
 export class Controller {
   target: HTMLElement;
@@ -94,8 +94,8 @@ export class Controller {
       this.wrapper.style.backgroundColor = getComputedStyle(this.target).backgroundColor;
     }
 
-    this.container.style.width = this.getValueStr(getPropPxValue(this.target, 'width'));
-    this.container.style.height = this.getValueStr(getPropPxValue(this.target, 'height'));
+    this.container.style.width = this.getValueStr(getItemRect(this.target).width);
+    this.container.style.height = this.getValueStr(getItemRect(this.target).height);
 
     cb?.(this.info.noScroll);
   };
@@ -213,13 +213,6 @@ export class Controller {
   };
 
   /**
-   * containerLength should always be constant
-   */
-  private getContainerLength = () => {
-    return getPropPxValue(this.target, this.viewportProp);
-  };
-
-  /**
    * calc "paddingLeft" in direction x or "paddingTop" in direction y
    */
   private getExtraPadding = () => {
@@ -233,7 +226,7 @@ export class Controller {
 
   private getBaseInfo = () => {
     const getItemLength = (item: HTMLElement) => {
-      const { width, height } = item.getBoundingClientRect();
+      const { width, height } = getItemRect(item);
 
       const calcMargin = (item: HTMLElement) => {
         const style = getComputedStyle(item);
@@ -258,7 +251,7 @@ export class Controller {
 
     const targetItems = (this.target?.children ? Array.from(this.target.children) : []) as HTMLElement[];
     const totalLength = targetItems.reduce((sum, cur) => sum + getItemLength(cur), 0) + this.getExtraPadding();
-    const containerLength = this.getContainerLength();
+    const containerLength = getItemRect(this.target)[this.viewportProp];
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
     const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
