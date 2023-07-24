@@ -60,7 +60,7 @@ export function removeStyle(el: HTMLElement, prop: string) {
   }
 }
 
-export function getItemRect(el: HTMLElement) {
+export function getItemRect(el: HTMLElement, runtime = true) {
   const ret = (w: number, h: number) => {
     return {
       width: w,
@@ -68,8 +68,7 @@ export function getItemRect(el: HTMLElement) {
     };
   };
 
-  // prop value has highest priority
-  if (getPropPxValue(el, 'width') > 0 && getPropPxValue(el, 'height') > 0) {
+  if (!runtime) {
     return ret(getPropPxValue(el, 'width'), getPropPxValue(el, 'height'));
   }
 
@@ -88,6 +87,11 @@ export function getItemRect(el: HTMLElement) {
     if (parseFloat(w) > 0 && parseFloat(h) > 0) {
       return ret(getDerivedPx(w), getDerivedPx(h));
     }
+  }
+
+  // fallback
+  if (getPropPxValue(el, 'width') > 0 && getPropPxValue(el, 'height') > 0) {
+    return ret(getPropPxValue(el, 'width'), getPropPxValue(el, 'height'));
   }
 
   return ret(0, 0);

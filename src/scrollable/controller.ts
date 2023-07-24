@@ -94,8 +94,8 @@ export class Controller {
       this.wrapper.style.backgroundColor = getComputedStyle(this.target).backgroundColor;
     }
 
-    this.container.style.width = this.getValueStr(getItemRect(this.target).width);
-    this.container.style.height = this.getValueStr(getItemRect(this.target).height);
+    this.container.style.width = this.getValueStr(this.getContainerRect().width);
+    this.container.style.height = this.getValueStr(this.getContainerRect().height);
 
     cb?.(this.info.noScroll);
   };
@@ -213,6 +213,13 @@ export class Controller {
   };
 
   /**
+   * container rect should be constant
+   */
+  private getContainerRect = () => {
+    return getItemRect(this.target, false);
+  };
+
+  /**
    * calc "paddingLeft" in direction x or "paddingTop" in direction y
    */
   private getExtraPadding = () => {
@@ -251,7 +258,7 @@ export class Controller {
 
     const targetItems = (this.target?.children ? Array.from(this.target.children) : []) as HTMLElement[];
     const totalLength = targetItems.reduce((sum, cur) => sum + getItemLength(cur), 0) + this.getExtraPadding();
-    const containerLength = getItemRect(this.target)[this.viewportProp];
+    const containerLength = this.getContainerRect()[this.viewportProp];
     const scrollLength = totalLength - containerLength;
     const thumbLength = containerLength * (containerLength / totalLength);
     const thumbLengthPercent = `${(100 * containerLength) / totalLength}%`;
