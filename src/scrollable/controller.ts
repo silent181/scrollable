@@ -14,16 +14,16 @@ export class Controller {
   info: BaseInfo;
   direction: ScrollDirection;
   forceUpdate: () => void;
-  _scrollValue = 0;
-  getValueStr: (value: number) => string;
 
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
+  private _scrollValue = 0;
   private isTransitioning = false;
   private containerScrolling = false;
   private scrollbarScrolling = false;
   private lastScrollValue = 0;
   private startPosition: ScrollInfo = { x: undefined, y: undefined };
+  private getValueStr: (value: number) => string;
   private transitionTime: number;
   private unit?: ControllerOptions['unit'];
 
@@ -44,37 +44,13 @@ export class Controller {
     this.info = this.getBaseInfo();
   }
 
-  get viewportProp() {
-    return this.mutuallyExclusive('width', 'height');
-  }
-
-  get viewportCounterProp() {
-    return this.mutuallyExclusive('height', 'width');
-  }
-
-  get eventProp() {
-    return this.mutuallyExclusive('clientX', 'clientY');
-  }
-
-  get extraPaddingProp() {
-    return this.mutuallyExclusive('paddingLeft', 'paddingTop');
-  }
-
-  get scrollbarOffsetProp() {
-    return this.mutuallyExclusive('left', 'top');
-  }
-
-  get scrollbarBoundary() {
-    return this.mutuallyExclusive(['left', 'right'] as const, ['top', 'bottom'] as const);
-  }
-
   get scrollValue() {
     return this._scrollValue;
   }
 
   set scrollValue(value: number) {
     this._scrollValue = value;
-    this.moveItems();
+    this.moveWrapper();
     this.moveScrollbar();
     this.onScroll?.current?.({
       x: this.direction === 'x' ? value : undefined,
@@ -82,7 +58,31 @@ export class Controller {
     });
   }
 
-  public init = (cb?: (noScroll: boolean) => void) => {
+  private get viewportProp() {
+    return this.mutuallyExclusive('width', 'height');
+  }
+
+  private get viewportCounterProp() {
+    return this.mutuallyExclusive('height', 'width');
+  }
+
+  private get eventProp() {
+    return this.mutuallyExclusive('clientX', 'clientY');
+  }
+
+  private get extraPaddingProp() {
+    return this.mutuallyExclusive('paddingLeft', 'paddingTop');
+  }
+
+  private get scrollbarOffsetProp() {
+    return this.mutuallyExclusive('left', 'top');
+  }
+
+  private get scrollbarBoundary() {
+    return this.mutuallyExclusive(['left', 'right'] as const, ['top', 'bottom'] as const);
+  }
+
+  init = (cb?: (noScroll: boolean) => void) => {
     if (this.info.noScroll) {
       this.scrollbarWrapper.style.display = 'none';
       removeStyle(this.wrapper, 'transform');
@@ -100,16 +100,16 @@ export class Controller {
     cb?.(this.info.noScroll);
   };
 
-  public handleContainerStart = (e: any) => {
+  handleContainerStart = (e: any) => {
     this.startScroll(e, 'container');
   };
 
-  public handleScrollbarStart = (e: any) => {
+  handleScrollbarStart = (e: any) => {
     this.startScroll(e, 'scrollbarThumb');
     this.scrollbarThumb.style.opacity = '1';
   };
 
-  public handleMove = (e: any) => {
+  handleMove = (e: any) => {
     if (!this.containerScrolling) {
       return;
     }
@@ -121,7 +121,7 @@ export class Controller {
     this.doScroll(value);
   };
 
-  public handleScrollbarMove = (e: any) => {
+  handleScrollbarMove = (e: any) => {
     if (!this.scrollbarScrolling) {
       return;
     }
@@ -131,13 +131,13 @@ export class Controller {
     this.doScrollbarScroll(diff);
   };
 
-  public handleEnd = () => {
+  handleEnd = () => {
     this.scrollbarScrolling = false;
     this.containerScrolling = false;
     removeStyle(this.scrollbarThumb, 'opacity');
   };
 
-  public handleWheel = (e: WheelEvent) => {
+  handleWheel = (e: WheelEvent) => {
     if (this.containerScrolling || this.scrollbarScrolling) {
       return;
     }
@@ -146,7 +146,7 @@ export class Controller {
     this.doScroll(nextScrollValue, true);
   };
 
-  public handleBarClick = (e: any) => {
+  handleBarClick = (e: any) => {
     if (e.target === this.scrollbarThumb || this.scrollbarThumb.contains(e.target)) {
       return;
     }
@@ -156,7 +156,7 @@ export class Controller {
     this.scrollTo(position);
   };
 
-  public scroll = (relativeValue: number, animation = true) => {
+  scroll = (relativeValue: number, animation = true) => {
     if (this.isTransitioning || this.info.noScroll) {
       return;
     }
@@ -166,23 +166,23 @@ export class Controller {
     this.withAmination(animation)(() => this.doScroll(computedValue, true));
   };
 
-  public scrollToStart = (animation = true) => {
+  scrollToStart = (animation = true) => {
     this.withAmination(animation)(() => {
       this.doScroll(0);
     });
   };
 
-  public scrollToEnd = (animation = true) => {
+  scrollToEnd = (animation = true) => {
     this.withAmination(animation)(() => {
       this.doScroll(-this.info.scrollLength);
     });
   };
 
-  public register = (key: string) => {
+  register = (key: string) => {
     scrollManager.register(key, this);
   };
 
-  public unregister = (key: string) => {
+  unregister = (key: string) => {
     scrollManager.unregister(key);
   };
 
@@ -331,7 +331,7 @@ export class Controller {
     }, this.transitionTime + 100);
   };
 
-  private moveItems = () => {
+  private moveWrapper = () => {
     raf(() => {
       this.wrapper.style.transform = `translate${this.direction.toUpperCase()}(${this.getValueStr(this.scrollValue)})`;
     });
