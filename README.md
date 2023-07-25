@@ -1,4 +1,4 @@
-# scrollable
+# Scrollable
 
 A React component to make element scrollable with custom scrollbar
 
