@@ -10,7 +10,7 @@ import React, {
   useState,
 } from 'react';
 
-import { ScrollableInstance, ScrollableProps } from './type';
+import { ScrollableInstance, ScrollableProps, ColorByPicker } from './type';
 import './index.css';
 import { Controller } from './controller';
 
@@ -30,6 +30,12 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     ...defaultScrollbarProps,
     ...scrollbar,
   };
+
+  let scrollbarColor: any = backgroundColor;
+  if (scrollbarColor.r && scrollbarColor.g && scrollbarColor.b && scrollbarColor.a) {
+    const { r, g, b, a } = scrollbarColor as ColorByPicker;
+    scrollbarColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
 
   const [_, forceUpdate] = useState(1);
 
@@ -215,7 +221,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
   const getThumbStyle = () => {
     let styles: CSSProperties = {
-      backgroundColor,
+      backgroundColor: imgSrc ? undefined : scrollbarColor,
       borderRadius,
       cursor: disableInteraction ? undefined : 'pointer',
     };
@@ -237,6 +243,15 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     return styles;
   };
 
+  const getImgSrc = (src: string) => {
+    const reg = /^url\(.+\)$/;
+    if (reg.test(src)) {
+      return src;
+    }
+
+    return `url("${src}")`;
+  };
+
   return (
     <div
       className="scrollable-viewport"
@@ -250,7 +265,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       </div>
       <div id={scrollbarId} className="scrollable-scrollbar" ref={scrollbarRef} style={getBarStyle()}>
         <div className="scrollable-scrollbar-thumb" ref={thumbRef} style={getThumbStyle()}>
-          {imgSrc ? <img className="scrollable-scrollbar-img" src={imgSrc} /> : null}
+          {imgSrc ? <div className="scrollable-scrollbar-img" style={{ backgroundImage: getImgSrc(imgSrc) }} /> : null}
         </div>
       </div>
     </div>

@@ -9,6 +9,8 @@ export type ScrollInfo = {
 
 export type ScrollCallback = (info: ScrollInfo) => void;
 
+export type ColorByPicker = { r: string; g: string; b: string; a: string };
+
 export interface ScrollableProps {
   children: ReactElement;
   direction: ScrollDirection;
@@ -18,7 +20,7 @@ export interface ScrollableProps {
     size?: number | string;
     margin?: number | string;
     disableInteraction?: boolean;
-    backgroundColor?: CSSProperties['backgroundColor'];
+    backgroundColor?: CSSProperties['backgroundColor'] | ColorByPicker;
     imgSrc?: string;
     borderRadius?: number | string;
   };
