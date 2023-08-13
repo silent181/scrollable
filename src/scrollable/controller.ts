@@ -4,6 +4,7 @@ import { BaseInfo, ScrollDirection, ScrollCallback, ScrollInfo, ControllerOption
 
 import { scrollManager } from './manager';
 import { getDerivedPx, getValueStr, raf, removeStyle, getItemRect } from './utils';
+import { Opposite } from './opposite';
 
 export class Controller {
   target: HTMLElement;
@@ -26,6 +27,7 @@ export class Controller {
   private getValueStr: (value: number) => string;
   private transitionTime: number;
   private unit?: ControllerOptions['unit'];
+  private opposite: Opposite<ControllerOptions['direction']>;
 
   constructor(options: ControllerOptions) {
     this.target = options.target;
@@ -40,6 +42,7 @@ export class Controller {
     this._scrollValue = 0;
     this.unit = options.unit || 'px';
     this.getValueStr = getValueStr.bind(this, this.unit);
+    this.opposite = new Opposite(options.direction).determineFirstReturn('x');
 
     this.info = this.getBaseInfo();
   }
@@ -59,27 +62,27 @@ export class Controller {
   }
 
   private get viewportProp() {
-    return this.mutuallyExclusive('width', 'height');
+    return this.opposite.matchOne('width', 'height');
   }
 
   private get viewportCounterProp() {
-    return this.mutuallyExclusive('height', 'width');
+    return this.opposite.matchOne('height', 'width');
   }
 
   private get eventProp() {
-    return this.mutuallyExclusive('clientX', 'clientY');
+    return this.opposite.matchOne('clientX', 'clientY');
   }
 
   private get extraPaddingProp() {
-    return this.mutuallyExclusive('paddingLeft', 'paddingTop');
+    return this.opposite.matchOne('paddingLeft', 'paddingTop');
   }
 
   private get scrollbarOffsetProp() {
-    return this.mutuallyExclusive('left', 'top');
+    return this.opposite.matchOne('left', 'top');
   }
 
   private get scrollbarBoundary() {
-    return this.mutuallyExclusive(['left', 'right'] as const, ['top', 'bottom'] as const);
+    return this.opposite.matchOne(['left', 'right'] as const, ['top', 'bottom'] as const);
   }
 
   init = (cb?: (noScroll: boolean) => void) => {
@@ -186,18 +189,6 @@ export class Controller {
     scrollManager.unregister(key);
   };
 
-  private mutuallyExclusive = <X, Y>(xVal: X, yVal: Y) => {
-    if (typeof xVal === 'function' && typeof yVal === 'function') {
-      if (this.direction === 'x') {
-        xVal();
-      } else {
-        yVal();
-      }
-    }
-
-    return this.direction === 'x' ? xVal : yVal;
-  };
-
   private withAmination = (animation = true) => {
     return (action: () => void) => {
       if (animation) {
@@ -253,7 +244,7 @@ export class Controller {
 
       const margins = calcMargin(item);
 
-      return this.mutuallyExclusive(width + margins.left + margins.right, height + margins.top + margins.bottom);
+      return this.opposite.matchOne(width + margins.left + margins.right, height + margins.top + margins.bottom);
     };
 
     const targetItems = (this.target?.children ? Array.from(this.target.children) : []) as HTMLElement[];
@@ -282,11 +273,11 @@ export class Controller {
   private getStartPosition = () => {
     const p = this.startPosition;
 
-    return this.mutuallyExclusive(p.x!, p.y!);
+    return this.opposite.matchOne(p.x!, p.y!);
   };
 
   private setStartPosition = (value: number) => {
-    this.mutuallyExclusive(
+    this.opposite.matchOne(
       () => {
         this.startPosition.x = value;
       },
