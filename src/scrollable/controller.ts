@@ -28,6 +28,7 @@ export class Controller {
   private transitionTime: number;
   private unit?: ControllerOptions['unit'];
   private opposite: Opposite<ControllerOptions['direction']>;
+  private alwaysShowScrollbar?: boolean;
 
   constructor(options: ControllerOptions) {
     this.target = options.target;
@@ -39,12 +40,15 @@ export class Controller {
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
     this.forceUpdate = options.forceUpdate;
-    this._scrollValue = 0;
+    this.alwaysShowScrollbar = options.alwaysShowScrollbar;
     this.unit = options.unit || 'px';
+
+    this._scrollValue = 0;
     this.getValueStr = getValueStr.bind(this, this.unit);
     this.opposite = new Opposite(options.direction).determineFirstReturn('x');
 
     this.info = this.getBaseInfo();
+    console.log(this.info, 'info');
   }
 
   get scrollValue() {
@@ -87,7 +91,14 @@ export class Controller {
 
   init = (cb?: (noScroll: boolean) => void) => {
     if (this.info.noScroll) {
-      this.scrollbarWrapper.style.display = 'none';
+      if (this.alwaysShowScrollbar) {
+        this.scrollbarThumb.style[this.viewportProp] = '100%';
+        this.scrollbarWrapper.style.display = 'block';
+        removeStyle(this.scrollbarThumb, 'transform');
+      } else {
+        this.scrollbarWrapper.style.display = 'none';
+      }
+
       removeStyle(this.wrapper, 'transform');
     } else {
       this.scrollbarThumb.style[this.viewportProp] = this.info.thumbLengthPercent;
@@ -290,7 +301,7 @@ export class Controller {
   private getEventPosition = (e: MouseEvent | TouchEvent) => {
     const prop = this.eventProp;
 
-    if ((e as MouseEvent)[prop]) {
+    if ((e as MouseEvent)[prop] !== undefined) {
       return (e as MouseEvent)[prop];
     }
 

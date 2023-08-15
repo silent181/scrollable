@@ -20,13 +20,15 @@ const defaultScrollbarProps: ScrollableProps['scrollbar'] = {
   borderRadius: 20,
   disableInteraction: false,
   backgroundColor: '#999',
+  mouseWheelType: 'auto',
+  alwaysShow: false,
 };
 
 const scrollbarId = 'J_scrollbar';
 
 const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<ScrollableInstance>) => {
   const { scrollbar, onScroll, direction, id, unit = 'px', children, style } = props;
-  const { size, margin, disableInteraction, backgroundColor, imgSrc, borderRadius } = {
+  const { size, margin, disableInteraction, backgroundColor, imgSrc, borderRadius, mouseWheelType, alwaysShow } = {
     ...defaultScrollbarProps,
     ...scrollbar,
   };
@@ -85,6 +87,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       onScrollRef,
       forceUpdate: update,
       unit,
+      alwaysShowScrollbar: alwaysShow,
     });
 
     controllerRef.current = controller;
@@ -139,7 +142,11 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     scrollbarWrapperEl.addEventListener('click', handleScrollbarClick);
 
     if (direction === 'y') {
-      wrapperEl.addEventListener('wheel', handleWheel);
+      if (mouseWheelType === 'auto') {
+        wrapperEl.addEventListener('wheel', handleWheel);
+      } else if (mouseWheelType === 'always') {
+        document.addEventListener('wheel', handleWheel);
+      }
     }
 
     let observer: MutationObserver | null = null;
@@ -175,6 +182,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       thumbEl.removeEventListener('mousedown', handleScrollbarStart);
       thumbEl.removeEventListener('touchstart', handleScrollbarStart);
       wrapperEl.removeEventListener('wheel', handleWheel);
+      document.removeEventListener('wheel', handleWheel);
       scrollbarWrapperEl.removeEventListener('click', handleScrollbarClick);
 
       if (!eventOnly) {

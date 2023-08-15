@@ -23,6 +23,8 @@ export interface ScrollableProps {
     backgroundColor?: CSSProperties['backgroundColor'] | ColorByPicker;
     imgSrc?: string;
     borderRadius?: number | string;
+    mouseWheelType?: 'auto' | 'always' | 'never';
+    alwaysShow?: boolean;
   };
   style?: CSSProperties;
   unit?: 'px' | 'rem';
@@ -51,6 +53,7 @@ export interface ControllerOptions {
   onScrollRef?: MutableRefObject<ScrollCallback | undefined>;
   transitionTime?: number;
   unit?: ScrollableProps['unit'];
+  alwaysShowScrollbar?: boolean;
 }
 
 export interface ScrollableInstance {
