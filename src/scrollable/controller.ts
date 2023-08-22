@@ -12,10 +12,8 @@ export class Controller {
   scrollbarWrapper: HTMLElement;
   wrapper: HTMLElement;
   container: HTMLElement;
-  info: BaseInfo;
   direction: ScrollDirection;
-  forceUpdate: () => void;
-
+  info = {} as BaseInfo;
   onScroll?: MutableRefObject<ScrollCallback | undefined>;
 
   private _scrollValue = 0;
@@ -39,16 +37,11 @@ export class Controller {
     this.direction = options.direction;
     this.onScroll = options.onScrollRef;
     this.transitionTime = options.transitionTime || 200;
-    this.forceUpdate = options.forceUpdate;
     this.alwaysShowScrollbar = options.alwaysShowScrollbar;
     this.unit = options.unit || 'px';
 
-    this._scrollValue = 0;
     this.getValueStr = getValueStr.bind(this, this.unit);
     this.opposite = new Opposite(options.direction).determineFirstReturn('x');
-
-    this.info = this.getBaseInfo();
-    console.log(this.info, 'info');
   }
 
   get scrollValue() {
@@ -89,7 +82,9 @@ export class Controller {
     return this.opposite.matchOne(['left', 'right'] as const, ['top', 'bottom'] as const);
   }
 
-  init = (cb?: (noScroll: boolean) => void) => {
+  layout = (init = false) => {
+    this.info = this.getBaseInfo();
+
     if (this.info.noScroll) {
       if (this.alwaysShowScrollbar) {
         this.scrollbarThumb.style[this.viewportProp] = '100%';
@@ -106,19 +101,31 @@ export class Controller {
       this.wrapper.style[this.viewportProp] = this.getValueStr(this.info.totalLength);
       this.wrapper.style[this.viewportCounterProp] = '100%';
       this.wrapper.style.backgroundColor = getComputedStyle(this.target).backgroundColor;
+
+      if (Math.abs(this.scrollValue) > this.info.scrollLength) {
+        this.withAmination()(() => this.doScroll(-this.info.scrollLength));
+      }
     }
 
-    this.container.style.width = this.getValueStr(this.getContainerRect().width);
-    this.container.style.height = this.getValueStr(this.getContainerRect().height);
-
-    cb?.(this.info.noScroll);
+    if (init) {
+      this.container.style.width = this.getValueStr(this.getContainerRect().width);
+      this.container.style.height = this.getValueStr(this.getContainerRect().height);
+    }
   };
 
   handleContainerStart = (e: any) => {
+    if (this.info.noScroll) {
+      return;
+    }
+
     this.startScroll(e, 'container');
   };
 
   handleScrollbarStart = (e: any) => {
+    if (this.info.noScroll) {
+      return;
+    }
+
     this.startScroll(e, 'scrollbarThumb');
     this.scrollbarThumb.style.opacity = '1';
   };
@@ -152,7 +159,7 @@ export class Controller {
   };
 
   handleWheel = (e: WheelEvent) => {
-    if (this.containerScrolling || this.scrollbarScrolling) {
+    if (this.containerScrolling || this.scrollbarScrolling || this.info.noScroll) {
       return;
     }
 
@@ -202,6 +209,10 @@ export class Controller {
 
   private withAmination = (animation = true) => {
     return (action: () => void) => {
+      if (this.info.noScroll) {
+        return;
+      }
+
       if (animation) {
         this.startTransition();
       }

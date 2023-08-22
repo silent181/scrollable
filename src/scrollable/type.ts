@@ -49,7 +49,6 @@ export interface ControllerOptions {
   wrapper: HTMLElement;
   container: HTMLElement;
   direction: ScrollDirection;
-  forceUpdate: () => void;
   onScrollRef?: MutableRefObject<ScrollCallback | undefined>;
   transitionTime?: number;
   unit?: ScrollableProps['unit'];

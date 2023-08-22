@@ -39,8 +39,6 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     scrollbarColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   }
 
-  const [_, forceUpdate] = useState(1);
-
   const containerRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLDivElement>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
@@ -75,8 +73,6 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
     const thumbEl = thumbRef.current!;
     const scrollbarWrapperEl = scrollbarRef.current!;
 
-    const update = () => forceUpdate((c) => c + 1);
-
     const controller = new Controller({
       target: targetEl,
       scrollbarThumb: thumbEl,
@@ -85,7 +81,6 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       container: containerEl,
       direction,
       onScrollRef,
-      forceUpdate: update,
       unit,
       alwaysShowScrollbar: alwaysShow,
     });
@@ -153,16 +148,7 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
 
     if (typeof MutationObserver !== 'undefined') {
       observer = new MutationObserver(() => {
-        const prevController = controller;
-        update();
-
-        /**
-         * refresh scroll position
-         */
-        setTimeout(() => {
-          const currrentController = controllerRef.current;
-          currrentController?.scroll(-prevController.scrollValue);
-        }, 200);
+        controllerRef.current!.layout();
       });
       observer.observe(targetEl, {
         childList: true,
@@ -172,7 +158,10 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       console.warn('your env does not support MutationObserver');
     }
 
-    const clear = (eventOnly = false) => {
+    controller.register(id);
+    controller.layout(true);
+
+    return function clear() {
       wrapperEl.removeEventListener('mousedown', handleStart);
       wrapperEl.removeEventListener('touchstart', handleStart);
       document.removeEventListener('mousemove', handleMove);
@@ -185,21 +174,9 @@ const InternalScrollable = (props: ScrollableProps, ref: ForwardedRef<Scrollable
       document.removeEventListener('wheel', handleWheel);
       scrollbarWrapperEl.removeEventListener('click', handleScrollbarClick);
 
-      if (!eventOnly) {
-        controller.unregister(id);
-        observer && observer.disconnect();
-      }
+      controller.unregister(id);
+      observer && observer.disconnect();
     };
-
-    controller.register(id);
-
-    controller.init((noScroll) => {
-      if (noScroll) {
-        clear(true);
-      }
-    });
-
-    return () => clear();
   });
 
   useImperativeHandle(ref, () => methods);

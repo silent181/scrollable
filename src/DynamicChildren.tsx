@@ -11,7 +11,7 @@ const Internal = (props: any, ref: any) => {
 
   const manualNotify = useCallback(() => {
     const ctl = window.__scrollManager.getController(props.id);
-    ctl.forceUpdate();
+    ctl.layout();
   }, [props.id]);
 
   useEffect(() => {
